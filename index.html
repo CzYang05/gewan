@@ -2,32 +2,50 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>wedoBox.com.tw ｜ 雲端同步版</title>
+<title>wedoBox.com.tw ｜ 雲端管理系統 Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
 <style>
-/* 核心配色 - 原始霓虹版 (樣式格式完全不動) */
-:root { --primary: #0d1117; --accent: #00d2ff; --success: #39ff14; --danger: #ff3131; --bg: #0d1117; --card-bg: rgba(22, 27, 34, 0.9); }
-body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 1rem; background: var(--bg); color: #e6edf3; background-image: radial-gradient(circle at 50% 50%, #161b22 0%, #0d1117 100%); min-height: 100vh; }
+/* 完全恢復您最愛的原始霓虹配色與動畫 */
+:root { --primary: #0d1117; --accent: #00d2ff; --success: #39ff14; --danger: #ff3131; --warning: #ffcc00; --bg: #0d1117; --card-bg: rgba(22, 27, 34, 0.9); }
+
+body { 
+    font-family: "Microsoft JhengHei", sans-serif; 
+    margin: 0; padding: 1rem; 
+    background: var(--bg); color: #e6edf3; 
+    background-image: radial-gradient(circle at 50% 50%, #161b22 0%, #0d1117 100%); 
+    min-height: 100vh; 
+}
+
 h1, h2 { text-align: center; text-shadow: 0 0 10px var(--accent); color: var(--accent); }
-@keyframes mega-shake { 0%, 100% { transform: translate(0,0); } 10% { transform: translate(-8px, -8px); } 20% { transform: translate(8px, 8px); } }
+
+/* 原始震動與閃爍動畫 */
+@keyframes mega-shake { 0% { transform: translate(0,0); } 10% { transform: translate(-8px, -8px); } 100% { transform: translate(0,0); } }
+@keyframes flash-red { 0%, 100% { background: rgba(13, 17, 23, 1); } 50% { background: rgba(150, 0, 0, 1); } }
 .shake-heavy { animation: mega-shake 0.3s both; border-color: var(--danger) !important; }
+
 #loginOverlay { position: fixed; inset: 0; background: #0d1117; display: flex; justify-content: center; align-items: center; z-index: 9999; }
-.login-box { background: #161b22; padding: 2rem; border-radius: 20px; text-align: center; width: 300px; border: 2px solid var(--accent); }
-.pw-screen { background: #000; font-size: 2.2rem; padding: 15px; border-radius: 12px; margin-bottom: 20px; color: var(--accent); min-height: 45px; letter-spacing: 5px; border: 1px solid var(--accent); display: flex; justify-content: center; }
+.login-box { background: #161b22; padding: 2rem; border-radius: 20px; text-align: center; width: 300px; border: 2px solid var(--accent); position: relative; }
+.pw-screen { background: #000; font-size: 2.2rem; padding: 15px; border-radius: 12px; margin-bottom: 20px; color: var(--accent); min-height: 45px; letter-spacing: 5px; border: 1px solid var(--accent); display: flex; justify-content: center; align-items: center; }
+
 .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .num-btn { background: #1c2128; border: 1px solid #30363d; padding: 18px; font-size: 1.4rem; border-radius: 15px; color: #fff; cursor: pointer; }
+
 .grid { display: grid; gap: 12px; width: 100%; max-width: 1200px; margin: 1.5rem auto; grid-template-columns: repeat(5, 1fr); }
-.cell { background: var(--card-bg); border-radius: 12px; padding: 1rem 0.5rem; text-align: center; cursor: pointer; border: 1px solid #30363d; min-height: 85px; display: flex; flex-direction: column; justify-content: center; }
-.cell.occupied { border-color: var(--success); color: var(--success); }
-.detail { max-width: 700px; margin: 20px auto; background: var(--card-bg); padding: 1.5rem; border-radius: 16px; border: 1px solid #30363d; }
+.cell { background: var(--card-bg); border-radius: 12px; padding: 1rem 0.5rem; text-align: center; cursor: pointer; display: flex; flex-direction: column; justify-content: center; min-height: 85px; border: 1px solid #30363d; }
+.cell.occupied { border: 1px solid var(--success); color: var(--success); }
+
+.detail { max-width: 700px; margin: 20px auto 100px auto; background: var(--card-bg); padding: 1.5rem; border-radius: 16px; border: 1px solid #30363d; }
 .row { display: grid; gap: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; }
-input, select { padding: 0.7rem; border-radius: 8px; background: #1c2128; border: 1px solid #30363d; color: #fff; width: 100%; box-sizing: border-box; }
+input, select { padding: 0.7rem; border-radius: 8px; background: #1c2128; border: 1px solid #30363d; color: #ffffff; width: 100%; box-sizing: border-box; font-size: 1rem; }
+.display-label { background: rgba(255,255,255,0.05); color: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; border: 1px solid #30363d; height: 38px; }
+
 button.action { padding: 0.8rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #fff; width: 100%; }
 .primary { background: linear-gradient(45deg, #00d2ff, #3a7bd5); }
 .success { background: linear-gradient(45deg, #27ae60, #2ecc71); }
 #syncStatus { position: fixed; bottom: 10px; right: 10px; font-size: 0.7rem; color: #555; }
+#backBtn { position: fixed; top: 15px; left: 15px; width: 50px; height: 50px; border-radius: 50%; background: rgba(22, 27, 34, 0.85); color: var(--accent); display: none; z-index: 999; border: 2px solid var(--accent); font-size: 24px; cursor: pointer; align-items: center; justify-content: center; }
 </style>
 </head>
 
@@ -39,15 +57,23 @@ button.action { padding: 0.8rem; border: none; border-radius: 8px; font-weight: 
         <h2>雲端管理系統</h2>
         <div id="pwDisplay" class="pw-screen"></div>
         <div class="numpad">
-            <script>
-                for(let i=1; i<=9; i++) document.write(`<button class="num-btn" onclick="press('${i}')">${i}</button>`);
-            </script>
+            <button class="num-btn" onclick="press('1')">1</button>
+            <button class="num-btn" onclick="press('2')">2</button>
+            <button class="num-btn" onclick="press('3')">3</button>
+            <button class="num-btn" onclick="press('4')">4</button>
+            <button class="num-btn" onclick="press('5')">5</button>
+            <button class="num-btn" onclick="press('6')">6</button>
+            <button class="num-btn" onclick="press('7')">7</button>
+            <button class="num-btn" onclick="press('8')">8</button>
+            <button class="num-btn" onclick="press('9')">9</button>
             <button class="num-btn" style="color:var(--danger)" onclick="resetPw()">C</button>
             <button class="num-btn" onclick="press('0')">0</button>
             <button class="num-btn" style="color:var(--success)" onclick="loginCheck()">OK</button>
         </div>
     </div>
 </div>
+
+<button id="backBtn" onclick="goBack()">←</button>
 
 <div id="mainUI" style="display:none">
     <h1 id="pageTitle">wedoBox 雲端同步模式</h1>
@@ -60,52 +86,42 @@ button.action { padding: 0.8rem; border: none; border-radius: 8px; font-weight: 
             <input id="dOwner" placeholder="姓名">
             <input id="dContact" placeholder="電話">
             <input id="dRent" type="number" placeholder="租金">
+            <input id="dSignDate" placeholder="簽約日" onblur="autoFormatDate(this)">
             <input id="dPeriod" placeholder="到期日" onblur="autoFormatDate(this)" style="grid-column: span 2;">
         </div>
         <button class="action success" id="saveBtn" onclick="saveDetail()">💾 儲存並同步至雲端</button>
-        <button class="action" style="background:#444; margin-top:10px;" onclick="goBack()">取消返回</button>
     </div>
 </div>
 
 <div id="syncStatus">雲端狀態：就緒</div>
 
 <script>
-// !!! 請在此處貼上您的 Google Apps Script URL !!!
 const CLOUD_URL ="https://script.google.com/macros/s/AKfycbz83Rke8XxAQ1ItOIhpUTz6SJ69gMbuFWansrqXVDEY4jbY2pa61QVFoo_jF478suQ/exec"; 
 
 let data = [];
 let currentZone = null, currentItem = null, tempPw = "";
 
-// 從雲端抓取資料
 async function loadFromCloud() {
     document.getElementById('syncStatus').innerText = "雲端狀態：讀取中...";
     try {
         const response = await fetch(CLOUD_URL);
         data = await response.json();
-        if (data.length === 0) initData();
+        if (!data || data.length === 0) initData();
         document.getElementById('syncStatus').innerText = "雲端狀態：已同步";
     } catch (e) {
-        console.log("讀取失敗，使用本地暫存");
         data = JSON.parse(localStorage.getItem("gw_data")) || [];
         if (data.length === 0) initData();
     }
 }
 
-// 儲存至雲端
 async function saveToCloud() {
     document.getElementById('saveBtn').innerText = "同步中...";
     document.getElementById('saveBtn').disabled = true;
     try {
-        await fetch(CLOUD_URL, {
-            method: "POST",
-            body: JSON.stringify(data),
-            mode: 'no-cors' // 避免跨網域問題
-        });
+        await fetch(CLOUD_URL, { method: "POST", body: JSON.stringify(data), mode: 'no-cors' });
         localStorage.setItem("gw_data", JSON.stringify(data));
         document.getElementById('syncStatus').innerText = "雲端狀態：同步成功";
-    } catch (e) {
-        alert("同步失敗，請檢查網路");
-    }
+    } catch (e) { alert("同步失敗"); }
     document.getElementById('saveBtn').innerText = "💾 儲存並同步至雲端";
     document.getElementById('saveBtn').disabled = false;
 }
@@ -116,7 +132,7 @@ function updateDisplay() { document.getElementById('pwDisplay').innerText = "•
 
 async function loginCheck() {
     if (tempPw === "1688" || tempPw === "6969" || tempPw === "9527") {
-        await loadFromCloud(); // 登入時抓取最新資料
+        await loadFromCloud();
         document.getElementById('loginOverlay').style.display = "none";
         document.getElementById('mainUI').style.display = "block";
         showZones();
@@ -128,8 +144,29 @@ async function loginCheck() {
 
 function initData() {
     const config = { "A": 60, "B": 20, "C": 20, "D": 20 };
+    data = [];
     Object.keys(config).forEach(z => {
-        for (let i = 1; i <= config[z]; i++) data.push({ zone: z, number: i, products: [], owner: "", contact: "", rent: "", period: "" });
+        for (let i = 1; i <= config[z]; i++) data.push({ zone: z, number: i, products: [], owner: "", contact: "", rent: "", period: "", signDate: "" });
+    });
+}
+
+function showZones() {
+    currentZone = null; gridPage.innerHTML = ""; detailPage.style.display = "none"; gridPage.style.display = "grid";
+    document.getElementById('backBtn').style.display = "none";
+    ["A", "B", "C", "D"].forEach(z => {
+        const div = document.createElement("div"); div.className = `cell`;
+        div.innerHTML = `<b>${z} 區</b>`;
+        div.onclick = () => openZone(z); gridPage.appendChild(div);
+    });
+}
+
+function openZone(z) {
+    currentZone = z; gridPage.innerHTML = ""; document.getElementById('backBtn').style.display = "flex";
+    data.filter(d => d.zone === z).forEach(item => {
+        const c = document.createElement("div"); const code = getCode(item);
+        c.className = item.owner ? 'cell occupied' : 'cell';
+        c.innerHTML = `<b>${code}</b><div>${item.owner||''}</div>`;
+        c.onclick = () => openDetail(item, code); gridPage.appendChild(c);
     });
 }
 
@@ -141,28 +178,10 @@ function getCode(item) {
     return `${item.zone}${String(item.number).padStart(2, "0")}`;
 }
 
-function showZones() {
-    currentZone = null; gridPage.innerHTML = ""; detailPage.style.display = "none"; gridPage.style.display = "grid";
-    ["A", "B", "C", "D"].forEach(z => {
-        const div = document.createElement("div"); div.className = `cell`;
-        div.innerHTML = `<b>${z} 區</b>`;
-        div.onclick = () => openZone(z); gridPage.appendChild(div);
-    });
-}
-
-function openZone(z) {
-    currentZone = z; gridPage.innerHTML = "";
-    data.filter(d => d.zone === z).forEach(item => {
-        const c = document.createElement("div"); const code = getCode(item);
-        c.className = item.owner ? 'cell occupied' : 'cell';
-        c.innerHTML = `<b>${code}</b><div>${item.owner||''}</div>`;
-        c.onclick = () => openDetail(item, code); gridPage.appendChild(c);
-    });
-}
-
 function openDetail(item, code) {
     currentItem = item; dCode.innerText = code;
-    dOwner.value = item.owner; dContact.value = item.contact; dRent.value = item.rent; dPeriod.value = item.period;
+    dOwner.value = item.owner || ""; dContact.value = item.contact || "";
+    dRent.value = item.rent || ""; dSignDate.value = item.signDate || ""; dPeriod.value = item.period || "";
     renderProducts(); gridPage.style.display = "none"; detailPage.style.display = "block";
 }
 
@@ -170,30 +189,43 @@ function renderProducts() {
     const pDiv = document.getElementById('products'); pDiv.innerHTML = "";
     currentItem.products.forEach((p, i) => {
         const r = document.createElement("div"); r.className = "row";
-        r.style.gridTemplateColumns = "1.5fr 1fr 1fr 40px";
-        r.innerHTML = `<input value="${p.name}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名">
-                       <select onchange="currentItem.products[${i}].type=this.value; renderProducts()">
-                          <option value="直售" ${p.type==='直售'?'selected':''}>直售</option>
-                          <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
-                       </select>
-                       <input type="number" value="${p.price}" oninput="currentItem.products[${i}].price=this.value" placeholder="價">
-                       <button style="color:red; background:none; border:none; font-size:1.2rem;" onclick="currentItem.products.splice(${i},1);renderProducts()">✕</button>`;
-        pDiv.appendChild(r);
+        let inner = `<input value="${p.name||''}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名">
+                     <select onchange="currentItem.products[${i}].type=this.value; if(this.value==='展示')currentItem.products[${i}].price='展示中'; renderProducts()">
+                        <option value="直售" ${p.type==='直售'?'selected':''}>直售</option>
+                        <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
+                        <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
+                     </select>`;
+
+        if (p.type === "刮卡") {
+            r.style.gridTemplateColumns = "1fr 1fr 1fr 1fr 35px";
+            inner += `<input type="number" placeholder="格" value="${p.total||''}" oninput="currentItem.products[${i}].total=this.value">
+                      <input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value">`;
+        } else if (p.type === "展示") {
+            r.style.gridTemplateColumns = "1fr 1fr 2fr 35px";
+            inner += `<div class="display-label">展示中</div>`;
+        } else {
+            r.style.gridTemplateColumns = "1fr 1fr 2fr 35px";
+            inner += `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value">`;
+        }
+        inner += `<button style="background:none; border:none; color:red; cursor:pointer;" onclick="currentItem.products.splice(${i},1);renderProducts()">✕</button>`;
+        r.innerHTML = inner; pDiv.appendChild(r);
     });
 }
 
-function addProduct() { currentItem.products.push({ name: "", type: "直售", price: "" }); renderProducts(); }
+function addProduct() { currentItem.products.push({ name: "", type: "直售", price: "", total: "" }); renderProducts(); }
 
 async function saveDetail() {
     currentItem.owner = dOwner.value; currentItem.contact = dContact.value;
-    currentItem.rent = dRent.value; currentItem.period = dPeriod.value;
-    await saveToCloud(); // 儲存時自動推送到雲端
-    goBack();
+    currentItem.rent = dRent.value; currentItem.signDate = dSignDate.value; currentItem.period = dPeriod.value;
+    await saveToCloud(); goBack();
 }
 
-function goBack() { detailPage.style.display = "none"; gridPage.style.display = "grid"; openZone(currentZone); }
-function handleGlobalKey(e) { if(e.key === "Enter") loginCheck(); }
+function goBack() { 
+    if (detailPage.style.display === "block") { detailPage.style.display = "none"; gridPage.style.display = "grid"; openZone(currentZone); } 
+    else { showZones(); } 
+}
 function autoFormatDate(i) { let v = i.value.replace(/\D/g, ''); if (v.length === 8) i.value = v.substring(0, 4) + "/" + v.substring(4, 6) + "/" + v.substring(6, 8); }
+function handleGlobalKey(e) { if(e.key === "Enter") loginCheck(); }
 </script>
 </body>
 </html>
