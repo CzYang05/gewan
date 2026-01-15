@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>格玩維度｜管理系統 Pro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+<style>
+/* 核心配色 - 回復至霓虹版 */
+:root { --primary: #0d1117; --accent: #00d2ff; --success: #39ff14; --danger: #ff3131; --warning: #ffcc00; --bg: #0d1117; --card-bg: rgba(22, 27, 34, 0.9); }
+
+body { 
+    font-family: "Microsoft JhengHei", sans-serif; 
+    margin: 0; padding: 1rem; 
+    background: var(--bg); color: #e6edf3; 
+    background-image: radial-gradient(circle at 50% 50%, #161b22 0%, #0d1117 100%); 
+    min-height: 100vh; 
+}
+
+h1, h2 { text-align: center; text-shadow: 0 0 10px var(--accent); color: var(--accent); }
+
+/* --- 保留：強烈震動與鎖定動畫 --- */
+@keyframes mega-shake {
+    0% { transform: translate(0,0) rotate(0deg); }
+    10% { transform: translate(-8px, -8px) rotate(-2deg); }
+    20% { transform: translate(8px, 8px) rotate(2deg); }
+    30% { transform: translate(-8px, 8px) rotate(-2deg); }
+    40% { transform: translate(8px, -8px) rotate(2deg); }
+    50% { transform: translate(-8px, -8px) rotate(-1deg); }
+    60% { transform: translate(8px, 8px) rotate(1deg); }
+    70% { transform: translate(-8px, 8px) rotate(-1deg); }
+    80% { transform: translate(8px, -8px) rotate(1deg); }
+    90% { transform: translate(-4px, -4px) rotate(0); }
+    100% { transform: translate(0,0) rotate(0); }
+}
+
+@keyframes flash-red {
+    0%, 100% { background: rgba(13, 17, 23, 1); }
+    50% { background: rgba(150, 0, 0, 1); }
+}
+
+@keyframes zoom-in-out {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 20px red); }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+.shake-heavy { animation: mega-shake 0.3s cubic-bezier(.36,.07,.19,.97) both; border-color: var(--danger) !important; }
+.flash-screen { animation: flash-red 0.2s infinite; }
+
+/* --- 原有霓虹版動畫 --- */
+@keyframes breath-slow {
+    0% { background-color: #660000; box-shadow: 0 0 5px #ff3131; }
+    50% { background-color: #aa0000; box-shadow: 0 0 20px #ff3131; }
+    100% { background-color: #660000; box-shadow: 0 0 5px #ff3131; }
+}
+@keyframes breath-fast {
+    0% { background-color: #ccaa00; box-shadow: 0 0 10px #ffcc00; }
+    50% { background-color: #ffff00; box-shadow: 0 0 30px #ffff00; }
+    100% { background-color: #ccaa00; box-shadow: 0 0 10px #ffcc00; }
+}
+
+/* --- UI 元素 - 回復至霓虹版 --- */
+#backBtn { 
+    position: fixed; top: 15px; left: 15px; 
+    width: 50px; height: 50px; border-radius: 50%; 
+    background: rgba(22, 27, 34, 0.85); color: var(--accent); 
+    display: none; z-index: 999; border: 2px solid var(--accent);
+    font-size: 24px; cursor: pointer; align-items: center; justify-content: center;
+}
+
+.logout-btn { 
+    position: fixed; top: 15px; right: 15px; 
+    background: var(--danger); padding: 10px 18px; border-radius: 10px;
+    font-weight: bold; color: #fff; border: none; z-index: 998; cursor: pointer;
+    display: none; 
+}
+
+#loginOverlay { position: fixed; inset: 0; background: #0d1117; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+.login-box { background: #161b22; padding: 2rem; border-radius: 20px; text-align: center; width: 300px; border: 2px solid var(--accent); position: relative; }
+.pw-screen { 
+    background: #000; font-size: 2.2rem; padding: 15px; border-radius: 12px; 
+    margin-bottom: 20px; color: var(--accent); min-height: 45px; 
+    letter-spacing: 5px; border: 1px solid var(--accent); 
+    display: flex; justify-content: center; align-items: center; transition: 0.3s;
+}
+
+/* 鎖定蓋板 UI */
+.lock-overlay { 
+    position: absolute; inset: 0; background: rgba(20, 0, 0, 0.95); 
+    display: none; flex-direction: column; justify-content: center; align-items: center; 
+    z-index: 100; border-radius: 20px; border: 3px solid var(--danger);
+}
+.count-num { font-size: 6rem; font-weight: 900; color: white; animation: zoom-in-out 1s infinite; }
+
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.num-btn { background: #1c2128; border: 1px solid #30363d; padding: 18px; font-size: 1.4rem; border-radius: 15px; color: #fff; cursor: pointer; }
+
+/* 詳情與搜尋 */
+.search-container { max-width: 500px; margin: 0 auto 20px auto; padding: 0 10px; }
+.search-input { 
+    background: rgba(255,255,255,0.05); border: 1px solid var(--accent); border-radius: 20px; 
+    padding: 10px 20px; color: white; width: 100%; box-sizing: border-box; outline: none; text-align: center;
+}
+.grid { display: grid; gap: 12px; width: 100%; max-width: 1200px; margin: 1.5rem auto; grid-template-columns: repeat(5, 1fr); }
+.cell { background: var(--card-bg); border-radius: 12px; padding: 1rem 0.5rem; text-align: center; cursor: pointer; display: flex; flex-direction: column; justify-content: center; min-height: 85px; border: 1px solid #30363d; transition: 0.3s; }
+.cell.empty { border: 1px dashed var(--accent); color: var(--accent); }
+.cell.occupied { border: 1px solid var(--success); color: var(--success); }
+.near-expire-14 { animation: breath-slow 3s infinite; border: 1px solid var(--danger) !important; color: #fff !important; }
+.near-expire-3 { animation: breath-fast 0.8s infinite; border: 3px solid #ff0000 !important; color: #000 !important; font-weight: 900 !important; }
+
+/* 表單與按鈕 */
+.detail { max-width: 700px; margin: 20px auto 100px auto; background: var(--card-bg); padding: 1.5rem; border-radius: 16px; border: 1px solid #30363d; }
+.row { display: grid; gap: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; position: relative; }
+input, select { padding: 0.7rem; border-radius: 8px; background: #1c2128; border: 1px solid #30363d; color: #ffffff; width: 100%; box-sizing: border-box; font-size: 1rem; }
+input[readonly] { background: rgba(255,255,255,0.05); color: #888; }
+button.action { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #fff; }
+.primary { background: linear-gradient(45deg, #00d2ff, #3a7bd5); }
+.success { background: linear-gradient(45deg, #27ae60, #2ecc71); }
+.danger { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+.remove-btn { background: #441111; color: #ff5555; border: 1px solid #ff3131; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; align-self: center; }
+.display-label { background: rgba(255,255,255,0.05); color: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; border: 1px solid #30363d; }
+</style>
+</head>
+
+<body onkeydown="handleGlobalKey(event)">
+
+<div id="loginOverlay">
+    <div class="login-box" id="loginBox">
+        <div id="lockOverlay" class="lock-overlay">
+            <div style="color:var(--danger); font-weight:900; letter-spacing:2px; margin-bottom:10px;">系統安全性鎖定</div>
+            <div id="countDisplay" class="count-num"></div>
+            <div style="color:white; font-size:0.8rem; margin-top:10px;">請稍後再試</div>
+        </div>
+        <h2>格玩維度系統</h2>
+        <div id="pwDisplay" class="pw-screen"></div>
+        <div class="numpad">
+            <button class="num-btn" onclick="press('1')">1</button>
+            <button class="num-btn" onclick="press('2')">2</button>
+            <button class="num-btn" onclick="press('3')">3</button>
+            <button class="num-btn" onclick="press('4')">4</button>
+            <button class="num-btn" onclick="press('5')">5</button>
+            <button class="num-btn" onclick="press('6')">6</button>
+            <button class="num-btn" onclick="press('7')">7</button>
+            <button class="num-btn" onclick="press('8')">8</button>
+            <button class="num-btn" onclick="press('9')">9</button>
+            <button class="num-btn" style="color:var(--danger)" onclick="resetPw()">C</button>
+            <button class="num-btn" onclick="press('0')">0</button>
+            <button class="num-btn" style="color:var(--success)" onclick="loginCheck()">OK</button>
+        </div>
+    </div>
+</div>
+
+<button id="backBtn" onclick="goBack()">←</button>
+<button id="mainLogoutBtn" class="logout-btn" onclick="logout()">登出系統</button>
+
+<div id="mainUI" style="display:none">
+    <h1 id="pageTitle">工作管理區</h1>
+    <div class="search-container" id="searchBarUI">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜尋格主姓名或電話..." oninput="handleSearch()">
+    </div>
+    <div style="text-align: center; margin-bottom: 20px; display:none;" id="excelBtnContainer">
+        <button class="action primary" onclick="exportExcel()">📊 下載 ABCD 分區報表</button>
+    </div>
+    <div id="gridPage" class="grid"></div>
+    <div id="detailPage" class="detail" style="display:none">
+        <h2 id="dCode"></h2>
+        <div style="font-weight:bold; margin-bottom:10px; color:var(--accent);">📦 商品管理</div>
+        <div id="products"></div>
+        <button id="addProdBtn" class="action primary" style="margin-bottom:2rem; width:100%" onclick="addProduct()">＋ 新增商品項目</button>
+        <div style="font-weight:bold; margin-bottom:10px; color:var(--accent);">👤 格主資訊</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:1.5rem;">
+            <div><label>🔎姓名</label><input id="dOwner"></div>
+            <div><label>📲電話</label><input id="dContact"></div>
+            <div><label>💴租金</label><input type="number" id="dRent"></div>
+            <div><label>📅簽約</label><input id="dSignDate" onblur="autoFormatDate(this)"></div>
+            <div style="grid-column: span 2;"><label>📆到期</label><input id="dPeriod" onblur="autoFormatDate(this)"></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="action success" style="flex:2" onclick="saveDetail()">💾 儲存所有變更</button>
+            <button class="action danger" style="flex:1;" id="delBtn" onclick="deleteThisCell()">❌ 刪除</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem("gw_data")) || [];
+let currentZone = null, currentItem = null, tempPw = "", loginType = "";
+let errorCounter = 0;
+let isLocked = false;
+
+// --- 密碼與登入動畫修正 ---
+function press(n) { if(!isLocked && tempPw.length < 4) { tempPw += n; updateDisplay(); } }
+function resetPw() { tempPw = ""; updateDisplay(); }
+function updateDisplay() { document.getElementById('pwDisplay').innerText = "•".repeat(tempPw.length); }
+
+function loginCheck() { 
+    if(isLocked) return;
+    const box = document.getElementById('loginBox');
+    const screen = document.getElementById('pwDisplay');
+
+    if (tempPw === "1688") startApp("boss"); 
+    else if (tempPw === "6969") startApp("staff");
+    else if (tempPw === "9527") startApp("owner"); 
+    else { 
+        // 錯誤處置：劇烈震動
+        errorCounter++;
+        box.classList.add('shake-heavy');
+        screen.style.color = 'var(--danger)';
+        screen.innerText = "密碼錯誤";
+
+        if (errorCounter >= 3) {
+            triggerLockdown();
+        } else {
+            setTimeout(() => {
+                box.classList.remove('shake-heavy');
+                screen.style.color = 'var(--accent)';
+                resetPw();
+            }, 500);
+        }
+    } 
+}
+
+function triggerLockdown() {
+    isLocked = true;
+    errorCounter = 0;
+    const overlay = document.getElementById('lockOverlay');
+    const countBox = document.getElementById('countDisplay');
+    const loginBg = document.getElementById('loginOverlay');
+    
+    overlay.style.display = 'flex';
+    loginBg.classList.add('flash-screen'); // 震撼背景閃爍
+
+    let timeLeft = 5;
+    const timer = setInterval(() => {
+        if (timeLeft <= 3) {
+            countBox.innerText = timeLeft;
+        } else {
+            countBox.innerText = "";
+        }
+        
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            overlay.style.display = 'none';
+            loginBg.classList.remove('flash-screen');
+            document.getElementById('loginBox').classList.remove('shake-heavy');
+            document.getElementById('pwDisplay').style.color = 'var(--accent)';
+            isLocked = false;
+            resetPw();
+        }
+        timeLeft--;
+    }, 1000);
+}
+
+function handleGlobalKey(e) {
+    if (document.getElementById('loginOverlay').style.display !== "none") {
+        if (/[0-9]/.test(e.key)) press(e.key);
+        if (e.key === "Enter") loginCheck();
+        if (e.key === "Backspace") { e.preventDefault(); resetPw(); }
+    } else if (e.key === "Backspace" && e.target.tagName !== "INPUT") {
+        e.preventDefault(); goBack();
+    }
+}
+
+function startApp(type) { 
+    loginType = type; 
+    document.getElementById('loginOverlay').style.display = "none"; 
+    document.getElementById('mainUI').style.display = "block"; 
+    document.getElementById('mainLogoutBtn').style.display = "block";
+    document.getElementById('pageTitle').innerText = (type==="boss"?"總監":(type==="staff"?"員工":"格主")) + "模式";
+    const isSpecial = (type === "boss" || type === "staff");
+    document.getElementById('excelBtnContainer').style.display = isSpecial ? "block" : "none";
+    document.getElementById('searchBarUI').style.display = isSpecial ? "block" : "none";
+    initData(); showZones(); 
+}
+
+function logout() { location.reload(); }
+
+// --- 基礎資料 ---
+function initData() { 
+    const config = { "A": 60, "B": 20, "C": 20, "D": 20 }; 
+    Object.keys(config).forEach(z => { 
+        if (data.filter(d => d.zone === z).length === 0) { 
+            for (let i = 1; i <= config[z]; i++) data.push({ zone: z, number: i, products: [], owner: "", contact: "", rent: "", period: "", signDate: "" }); 
+        } 
+    }); 
+}
+function save() { localStorage.setItem("gw_data", JSON.stringify(data)); }
+
+function autoFormatDate(input) {
+    let val = input.value.replace(/\D/g, '');
+    if (val.length === 8) { input.value = val.substring(0, 4) + "/" + val.substring(4, 6) + "/" + val.substring(6, 8); } 
+}
+
+// --- 介面跳轉 ---
+function showZones() {
+    currentZone = null; gridPage.innerHTML = ""; detailPage.style.display = "none"; gridPage.style.display = "grid"; 
+    document.getElementById('backBtn').style.display = "none";
+    if(loginType !== "owner") document.getElementById('searchBarUI').style.display = "block";
+    ["A", "B", "C", "D"].forEach(z => {
+        const div = document.createElement("div"); div.className = `cell empty`;
+        div.innerHTML = `<div>${z} 區</div><small>租: ${data.filter(d => d.zone === z && d.owner).length}</small>`;
+        div.onclick = () => openZone(z); gridPage.appendChild(div);
+    });
+}
+
+function openZone(z) {
+    currentZone = z; gridPage.innerHTML = ""; 
+    document.getElementById('backBtn').style.display = "flex";
+    const now = new Date();
+    data.filter(d => d.zone === z).forEach(item => {
+        const c = document.createElement("div"); const code = getCode(item);
+        let statusClass = item.owner ? 'occupied' : 'empty';
+        let dateInfo = "";
+        if (item.owner && item.period) {
+            const diffDays = (new Date(item.period) - now) / 86400000;
+            if (diffDays <= 3) statusClass = 'near-expire-3'; else if (diffDays <= 14) statusClass = 'near-expire-14';
+            dateInfo = `<small style="font-size:0.7rem;">${item.period.slice(5)}</small>`;
+        }
+        c.className = `cell ${statusClass}`;
+        c.innerHTML = `<div>${code}</div><div>${item.owner}</div>${dateInfo}`;
+        c.onclick = () => openDetail(item, code); gridPage.appendChild(c);
+    });
+}
+
+function getCode(item) {
+    if (item.zone === "A" || item.zone === "B") {
+        const r = Math.floor((item.number - 1) / 5) + 1, col = ((item.number - 1) % 5) + 1;
+        return `${item.zone}${String(r).padStart(2, "0")}-${String(col).padStart(2, "0")}`;
+    }
+    return `${item.zone}${String(item.number).padStart(2, "0")}`;
+}
+
+// --- 商品邏輯 ---
+function handleTypeChange(newType, index) {
+    const p = currentItem.products[index];
+    if (p.type !== newType) { p.type = newType; p.price = (newType === "展示") ? "展示中" : ""; p.total = ""; }
+    renderProducts();
+}
+
+function renderProducts() {
+    const productsDiv = document.getElementById('products');
+    productsDiv.innerHTML = "";
+    currentItem.products.forEach((p, i) => {
+        const r = document.createElement("div");
+        const isLocked = (loginType === "owner" && p.isSaved);
+        r.className = "row";
+        let inner = `<input value="${p.name||''}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名" ${isLocked?"readonly":""}>
+                     <select onchange="handleTypeChange(this.value, ${i})" ${isLocked?"disabled":""}>
+                        <option value="直售" ${p.type==='直售'?'selected':''}>直售</option>
+                        <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
+                        <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
+                     </select>`;
+        if (p.type === "刮卡") {
+            r.style.gridTemplateColumns = isLocked ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr 1fr 40px";
+            inner += `<input type="number" placeholder="格" value="${p.total||''}" oninput="currentItem.products[${i}].total=this.value" ${isLocked?"readonly":""}>
+                      <input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${isLocked?"readonly":""}>`;
+        } else {
+            r.style.gridTemplateColumns = isLocked ? "1fr 1fr 2fr" : "1fr 1fr 2fr 40px";
+            inner += (p.type === "展示") ? `<div class="display-label">展示中</div>` : `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${isLocked?"readonly":""}>`;
+        }
+        if (!isLocked) inner += `<button class="remove-btn" onclick="currentItem.products.splice(${i},1);renderProducts()">✕</button>`;
+        r.innerHTML = inner; productsDiv.appendChild(r);
+    });
+}
+
+function addProduct() { currentItem.products.push({ name: "", type: "直售", price: "", total: "", isSaved: false }); renderProducts(); }
+
+function openDetail(item, code) {
+    currentItem = item; dCode.textContent = "位置：" + code;
+    dOwner.value = item.owner || ""; dContact.value = item.contact || ""; dRent.value = item.rent || ""; dPeriod.value = item.period || ""; dSignDate.value = item.signDate || "";
+    const canEdit = (loginType === "boss") || (loginType === "staff" && !item.owner);
+    [dOwner, dContact, dRent, dPeriod, dSignDate].forEach(f => f.readOnly = !canEdit);
+    delBtn.style.display = (loginType === "boss") ? "block" : "none";
+    renderProducts(); gridPage.style.display = "none"; detailPage.style.display = "block";
+    window.scrollTo(0,0);
+}
+
+function saveDetail() {
+    if (loginType === "owner") {
+        if (confirm("儲存後商品將鎖定，確定？")) { currentItem.products.forEach(p => p.isSaved = true); save(); goBack(); }
+    } else {
+        currentItem.owner = dOwner.value; currentItem.contact = dContact.value; currentItem.rent = dRent.value; 
+        currentItem.period = dPeriod.value; currentItem.signDate = dSignDate.value;
+        currentItem.products.forEach(p => p.isSaved = true); save(); alert("存檔成功"); goBack();
+    }
+}
+
+function deleteThisCell() { if (confirm("確定清空該位置？")) { Object.assign(currentItem, { products: [], owner: "", contact: "", rent: "", period: "", signDate: "" }); save(); goBack(); } }
+
+function goBack() { 
+    if (detailPage.style.display === "block") { detailPage.style.display = "none"; gridPage.style.display = "grid"; if(currentZone) openZone(currentZone); else showZones(); } 
+    else if (currentZone) showZones(); 
+}
+
+function handleSearch() {
+    const term = document.getElementById('searchInput').value.trim();
+    if (term === "") { if (currentZone) openZone(currentZone); else showZones(); return; }
+    gridPage.innerHTML = ""; document.getElementById('backBtn').style.display = "flex";
+    data.filter(d => (d.owner && d.owner.includes(term)) || (d.contact && d.contact.includes(term))).forEach(item => {
+        const c = document.createElement("div"); const code = getCode(item);
+        c.className = `cell occupied`;
+        c.innerHTML = `<div>${code}</div><div>${item.owner}</div>`;
+        c.onclick = () => openDetail(item, code); gridPage.appendChild(c);
+    });
+}
+
+function exportExcel() {
+    const wb = XLSX.utils.book_new();
+    ["A", "B", "C", "D"].forEach(z => {
+        const zoneData = data.filter(d => d.zone === z).map(d => ({ "編號": getCode(d), "格主": d.owner, "電話": d.contact, "租金": d.rent, "到期日": d.period, "商品": d.products.map(p=>`[${p.type}]${p.name}`).join(",") }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(zoneData), z + "區");
+    });
+    XLSX.writeFile(wb, "格玩維度報表.xlsx");
+}
+</script>
+</body>
+</html>
