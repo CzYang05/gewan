@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>格玩維度管理系統 </title>
+<title>格玩維度｜雲端管理系統 Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
@@ -20,46 +20,58 @@ body {
 
 h1, h2 { text-align: center; text-shadow: 0 0 10px var(--accent); color: var(--accent); }
 
-/* --- 保留：強烈震動與鎖定動畫 --- */
+/* 圖片放大檢視層 */
+#imageOverlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+    display: none; justify-content: center; align-items: center;
+    z-index: 10000; cursor: zoom-out;
+}
+#imageOverlay img {
+    max-width: 90%; max-height: 90%;
+    border: 2px solid var(--accent); border-radius: 8px;
+    box-shadow: 0 0 30px rgba(0,210,255,0.5);
+}
+
+.img-preview { 
+    width: 50px; height: 50px; 
+    object-fit: cover; border-radius: 4px; 
+    border: 1px solid var(--accent); cursor: pointer;
+    transition: 0.2s;
+}
+.img-preview:hover { transform: scale(1.1); filter: brightness(1.2); }
+
+.img-upload-placeholder {
+    width: 50px; height: 50px;
+    border: 1px dashed #555; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; color: #888; cursor: pointer;
+}
+
+input[type="file"] { display: none; }
+
+/* --- 動畫 --- */
 @keyframes mega-shake {
     0% { transform: translate(0,0) rotate(0deg); }
     10% { transform: translate(-8px, -8px) rotate(-2deg); }
     20% { transform: translate(8px, 8px) rotate(2deg); }
-    30% { transform: translate(-8px, 8px) rotate(-2deg); }
-    40% { transform: translate(8px, -8px) rotate(2deg); }
-    50% { transform: translate(-8px, -8px) rotate(-1deg); }
-    60% { transform: translate(8px, 8px) rotate(1deg); }
-    70% { transform: translate(-8px, 8px) rotate(-1deg); }
-    80% { transform: translate(8px, -8px) rotate(1deg); }
-    90% { transform: translate(-4px, -4px) rotate(0); }
     100% { transform: translate(0,0) rotate(0); }
 }
-
 @keyframes flash-red {
     0%, 100% { background: rgba(13, 17, 23, 1); }
     50% { background: rgba(150, 0, 0, 1); }
 }
-
 @keyframes zoom-in-out {
     0% { transform: scale(0.5); opacity: 0; }
     50% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 20px red); }
     100% { transform: scale(2); opacity: 0; }
 }
 
-.shake-heavy { animation: mega-shake 0.3s cubic-bezier(.36,.07,.19,.97) both; border-color: var(--danger) !important; }
+.shake-heavy { animation: mega-shake 0.3s both; border-color: var(--danger) !important; }
 .flash-screen { animation: flash-red 0.2s infinite; }
 
 /* --- 霓虹呼吸燈 --- */
-@keyframes breath-slow {
-    0% { background-color: #660000; box-shadow: 0 0 5px #ff3131; }
-    50% { background-color: #aa0000; box-shadow: 0 0 20px #ff3131; }
-    100% { background-color: #660000; box-shadow: 0 0 5px #ff3131; }
-}
-@keyframes breath-fast {
-    0% { background-color: #ccaa00; box-shadow: 0 0 10px #ffcc00; }
-    50% { background-color: #ffff00; box-shadow: 0 0 30px #ffff00; }
-    100% { background-color: #ccaa00; box-shadow: 0 0 10px #ffcc00; }
-}
+@keyframes breath-slow { 0%, 100% { background-color: #660000; } 50% { background-color: #aa0000; } }
+@keyframes breath-fast { 0%, 100% { background-color: #ccaa00; } 50% { background-color: #ffff00; } }
 
 #backBtn { 
     position: fixed; top: 15px; left: 15px; 
@@ -82,7 +94,7 @@ h1, h2 { text-align: center; text-shadow: 0 0 10px var(--accent); color: var(--a
     background: #000; font-size: 2.2rem; padding: 15px; border-radius: 12px; 
     margin-bottom: 20px; color: var(--accent); min-height: 45px; 
     letter-spacing: 5px; border: 1px solid var(--accent); 
-    display: flex; justify-content: center; align-items: center; transition: 0.3s;
+    display: flex; justify-content: center; align-items: center;
 }
 
 .lock-overlay { 
@@ -98,25 +110,24 @@ h1, h2 { text-align: center; text-shadow: 0 0 10px var(--accent); color: var(--a
 .search-container { max-width: 500px; margin: 0 auto 20px auto; padding: 0 10px; }
 .search-input { 
     background: rgba(255,255,255,0.05); border: 1px solid var(--accent); border-radius: 20px; 
-    padding: 10px 20px; color: white; width: 100%; box-sizing: border-box; outline: none; text-align: center;
+    padding: 10px 20px; color: white; width: 100%; box-sizing: border-box; text-align: center; outline: none;
 }
 .grid { display: grid; gap: 12px; width: 100%; max-width: 1200px; margin: 1.5rem auto; grid-template-columns: repeat(5, 1fr); }
-.cell { background: var(--card-bg); border-radius: 12px; padding: 1rem 0.5rem; text-align: center; cursor: pointer; display: flex; flex-direction: column; justify-content: center; min-height: 85px; border: 1px solid #30363d; transition: 0.3s; }
+.cell { background: var(--card-bg); border-radius: 12px; padding: 1rem 0.5rem; text-align: center; cursor: pointer; display: flex; flex-direction: column; justify-content: center; min-height: 85px; border: 1px solid #30363d; }
 .cell.empty { border: 1px dashed var(--accent); color: var(--accent); }
 .cell.occupied { border: 1px solid var(--success); color: var(--success); }
 .near-expire-14 { animation: breath-slow 3s infinite; border: 1px solid var(--danger) !important; color: #fff !important; }
 .near-expire-3 { animation: breath-fast 0.8s infinite; border: 3px solid #ff0000 !important; color: #000 !important; font-weight: 900 !important; }
 
 .detail { max-width: 700px; margin: 20px auto 100px auto; background: var(--card-bg); padding: 1.5rem; border-radius: 16px; border: 1px solid #30363d; }
-.row { display: grid; gap: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; position: relative; }
-input, select { padding: 0.7rem; border-radius: 8px; background: #1c2128; border: 1px solid #30363d; color: #ffffff; width: 100%; box-sizing: border-box; font-size: 1rem; }
-input[readonly] { background: rgba(255,255,255,0.05); color: #888; }
+.row { display: grid; gap: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; position: relative; align-items: center; }
+input, select { padding: 0.7rem; border-radius: 8px; background: #1c2128; border: 1px solid #30363d; color: #ffffff; width: 100%; box-sizing: border-box; }
 button.action { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #fff; }
 .primary { background: linear-gradient(45deg, #00d2ff, #3a7bd5); }
 .success { background: linear-gradient(45deg, #27ae60, #2ecc71); }
 .danger { background: linear-gradient(45deg, #e74c3c, #c0392b); }
-.remove-btn { background: #441111; color: #ff5555; border: 1px solid #ff3131; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; align-self: center; }
-.display-label { background: rgba(255,255,255,0.05); color: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; border: 1px solid #30363d; }
+.remove-btn { background: #441111; color: #ff5555; border: 1px solid #ff3131; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; justify-self: center;}
+.display-label { background: rgba(255,255,255,0.05); color: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; border: 1px solid #30363d; height: 100%; }
 #syncStatus { position: fixed; bottom: 10px; right: 10px; font-size: 0.7rem; color: #555; }
 </style>
 </head>
@@ -171,8 +182,8 @@ button.action { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-w
             <div><label>🔎姓名</label><input id="dOwner"></div>
             <div><label>📲電話</label><input id="dContact"></div>
             <div><label>💴租金</label><input type="number" id="dRent"></div>
-            <div><label>📅簽約日期</label><input id="dSignDate" onblur="autoFormatDate(this)"></div>
-            <div style="grid-column: span 2;"><label>📆合約到期</label><input id="dPeriod" onblur="autoFormatDate(this)"></div>
+            <div><label>📅簽約</label><input id="dSignDate" onblur="autoFormatDate(this)"></div>
+            <div style="grid-column: span 2;"><label>📆到期</label><input id="dPeriod" onblur="autoFormatDate(this)"></div>
         </div>
         <div style="display:flex; gap:10px;">
             <button class="action success" style="flex:2" id="saveBtn" onclick="saveDetail()">💾 儲存所有變更</button>
@@ -181,24 +192,25 @@ button.action { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-w
     </div>
 </div>
 
+<div id="imageOverlay" onclick="this.style.display='none'">
+    <img id="fullImage" src="">
+</div>
+
 <div id="syncStatus">雲端狀態：就緒</div>
 
 <script>
-// !!! 請在此處確認您的 Google Apps Script URL !!!
 const CLOUD_URL ="https://script.google.com/macros/s/AKfycbz83Rke8XxAQ1ItOIhpUTz6SJ69gMbuFWansrqXVDEY4jbY2pa61QVFoo_jF478suQ/exec"; 
 
 let data = [];
 let currentZone = null, currentItem = null, tempPw = "", loginType = "";
-let errorCounter = 0;
-let isLocked = false;
+let errorCounter = 0, isLocked = false;
 
-// --- 雲端同步邏輯 ---
+// --- 核心邏輯 ---
 async function loadFromCloud() {
     document.getElementById('syncStatus').innerText = "雲端狀態：讀取中...";
     try {
         const response = await fetch(CLOUD_URL);
-        const cloudData = await response.json();
-        data = cloudData;
+        data = await response.json();
         if (!data || data.length === 0) initData();
         document.getElementById('syncStatus').innerText = "雲端狀態：已同步";
     } catch (e) {
@@ -209,65 +221,50 @@ async function loadFromCloud() {
 
 async function saveToCloud() {
     const btn = document.getElementById('saveBtn');
-    btn.innerText = "同步中...";
-    btn.disabled = true;
+    btn.innerText = "同步中..."; btn.disabled = true;
     try {
         await fetch(CLOUD_URL, { method: "POST", body: JSON.stringify(data), mode: 'no-cors' });
         localStorage.setItem("gw_data", JSON.stringify(data));
         document.getElementById('syncStatus').innerText = "雲端狀態：同步成功";
     } catch (e) { alert("同步失敗"); }
-    btn.innerText = "💾 儲存所有變更";
-    btn.disabled = false;
+    btn.innerText = "💾 儲存所有變更"; btn.disabled = false;
 }
 
-// --- 登入邏輯 ---
+function initData() { 
+    const config = { "A": 60, "B": 20, "C": 20, "D": 20 }; 
+    data = [];
+    Object.keys(config).forEach(z => { 
+        for (let i = 1; i <= config[z]; i++) data.push({ zone: z, number: i, products: [], owner: "", contact: "", rent: "", period: "", signDate: "" }); 
+    }); 
+}
+
+// --- 登入與介面 ---
 function press(n) { if(!isLocked && tempPw.length < 4) { tempPw += n; updateDisplay(); } }
 function resetPw() { tempPw = ""; updateDisplay(); }
 function updateDisplay() { document.getElementById('pwDisplay').innerText = "•".repeat(tempPw.length); }
 
 async function loginCheck() { 
     if(isLocked) return;
-    const box = document.getElementById('loginBox');
-    const screen = document.getElementById('pwDisplay');
-
-    if (tempPw === "1688" || tempPw === "6969" || tempPw === "9527") {
+    if (["1688", "6969", "9527"].includes(tempPw)) {
         let type = (tempPw === "1688") ? "boss" : (tempPw === "6969" ? "staff" : "owner");
-        await loadFromCloud(); // 進入前先抓資料
+        await loadFromCloud();
         startApp(type);
     } else { 
         errorCounter++;
-        box.classList.add('shake-heavy');
-        screen.style.color = 'var(--danger)';
-        screen.innerText = "密碼錯誤";
-        if (errorCounter >= 3) { triggerLockdown(); } 
-        else {
-            setTimeout(() => {
-                box.classList.remove('shake-heavy');
-                screen.style.color = 'var(--accent)';
-                resetPw();
-            }, 500);
-        }
+        document.getElementById('loginBox').classList.add('shake-heavy');
+        setTimeout(() => { document.getElementById('loginBox').classList.remove('shake-heavy'); resetPw(); }, 500);
+        if (errorCounter >= 3) triggerLockdown();
     } 
 }
 
 function triggerLockdown() {
     isLocked = true; errorCounter = 0;
     const overlay = document.getElementById('lockOverlay');
-    const countBox = document.getElementById('countDisplay');
-    const loginBg = document.getElementById('loginOverlay');
     overlay.style.display = 'flex';
-    loginBg.classList.add('flash-screen');
     let timeLeft = 5;
     const timer = setInterval(() => {
-        countBox.innerText = (timeLeft <= 3) ? timeLeft : "";
-        if (timeLeft <= 0) {
-            clearInterval(timer);
-            overlay.style.display = 'none';
-            loginBg.classList.remove('flash-screen');
-            isLocked = false;
-            resetPw();
-            document.getElementById('pwDisplay').style.color = 'var(--accent)';
-        }
+        document.getElementById('countDisplay').innerText = timeLeft;
+        if (timeLeft <= 0) { clearInterval(timer); overlay.style.display = 'none'; isLocked = false; resetPw(); }
         timeLeft--;
     }, 1000);
 }
@@ -278,32 +275,92 @@ function startApp(type) {
     document.getElementById('mainUI').style.display = "block"; 
     document.getElementById('mainLogoutBtn').style.display = "block";
     document.getElementById('pageTitle').innerText = (type==="boss"?"總監":(type==="staff"?"員工":"格主")) + "模式";
-    const isSpecial = (type === "boss" || type === "staff");
-    document.getElementById('excelBtnContainer').style.display = isSpecial ? "block" : "none";
-    document.getElementById('searchBarUI').style.display = isSpecial ? "block" : "none";
     showZones(); 
 }
 
 function logout() { location.reload(); }
 
-function initData() { 
-    const config = { "A": 60, "B": 20, "C": 20, "D": 20 }; 
-    data = [];
-    Object.keys(config).forEach(z => { 
-        for (let i = 1; i <= config[z]; i++) data.push({ zone: z, number: i, products: [], owner: "", contact: "", rent: "", period: "", signDate: "" }); 
-    }); 
+// --- 商品與圖片邏輯 ---
+function renderProducts() {
+    const productsDiv = document.getElementById('products');
+    productsDiv.innerHTML = "";
+    currentItem.products.forEach((p, i) => {
+        const r = document.createElement("div");
+        const isLocked = (loginType === "owner" && p.isSaved);
+        r.className = "row";
+        
+        let imgHTML = p.img 
+            ? `<div style="position:relative">
+                <img src="${p.img}" class="img-preview" onclick="viewImage('${p.img}')">
+                ${!isLocked ? `<div onclick="triggerUpload(${i})" style="position:absolute; bottom:0; right:0; background:rgba(0,0,0,0.6); font-size:10px; padding:2px; cursor:pointer;">🔄</div>` : ''}
+               </div>`
+            : `<div class="img-upload-placeholder" onclick="triggerUpload(${i})">📷</div>`;
+
+        let fileInput = `<input type="file" id="file-${i}" accept="image/*" onchange="handleImgUpload(this, ${i})">`;
+
+        let inner = `${imgHTML} ${fileInput}
+                     <input value="${p.name||''}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名" ${isLocked?"readonly":""}>
+                     <select onchange="handleTypeChange(this.value, ${i})" ${isLocked?"disabled":""}>
+                        <option value="直售" ${p.type==='直售'?'selected':''}>直售</option>
+                        <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
+                        <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
+                     </select>`;
+        
+        if (p.type === "刮卡") {
+            r.style.gridTemplateColumns = isLocked ? "60px 1fr 1fr 1fr 1fr" : "60px 1fr 1fr 1fr 1fr 40px";
+            inner += `<input type="number" placeholder="格" value="${p.total||''}" oninput="currentItem.products[${i}].total=this.value" ${isLocked?"readonly":""}>
+                      <input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${isLocked?"readonly":""}>`;
+        } else {
+            r.style.gridTemplateColumns = isLocked ? "60px 1fr 1fr 2fr" : "60px 1fr 1fr 2fr 40px";
+            inner += (p.type === "展示") ? `<div class="display-label">展示中</div>` : `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${isLocked?"readonly":""}>`;
+        }
+        
+        if (!isLocked) inner += `<button class="remove-btn" onclick="currentItem.products.splice(${i},1);renderProducts()">✕</button>`;
+        r.innerHTML = inner; productsDiv.appendChild(r);
+    });
 }
 
-function autoFormatDate(input) {
-    let val = input.value.replace(/\D/g, '');
-    if (val.length === 8) { input.value = val.substring(0, 4) + "/" + val.substring(4, 6) + "/" + val.substring(6, 8); } 
+function handleTypeChange(newType, index) {
+    currentItem.products[index].type = newType;
+    if (newType === "展示") currentItem.products[index].price = "展示中";
+    renderProducts();
 }
 
-// --- 介面跳轉 ---
+function addProduct() { currentItem.products.push({ name: "", type: "直售", price: "", total: "", isSaved: false, img: "" }); renderProducts(); }
+
+function triggerUpload(index) { document.getElementById(`file-${index}`).click(); }
+
+function handleImgUpload(input, index) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 600; 
+                let width = img.width, height = img.height;
+                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                canvas.width = width; canvas.height = height;
+                canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+                currentItem.products[index].img = canvas.toDataURL("image/jpeg", 0.7);
+                renderProducts();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function viewImage(src) {
+    const overlay = document.getElementById('imageOverlay');
+    document.getElementById('fullImage').src = src;
+    overlay.style.display = 'flex';
+}
+
+// --- 其他功能 ---
 function showZones() {
     currentZone = null; gridPage.innerHTML = ""; detailPage.style.display = "none"; gridPage.style.display = "grid"; 
     document.getElementById('backBtn').style.display = "none";
-    if(loginType !== "owner") document.getElementById('searchBarUI').style.display = "block";
     ["A", "B", "C", "D"].forEach(z => {
         const div = document.createElement("div"); div.className = `cell empty`;
         div.innerHTML = `<div>${z} 區</div><small>租: ${data.filter(d => d.zone === z && d.owner).length}</small>`;
@@ -313,18 +370,11 @@ function showZones() {
 
 function openZone(z) {
     currentZone = z; gridPage.innerHTML = ""; document.getElementById('backBtn').style.display = "flex";
-    const now = new Date();
     data.filter(d => d.zone === z).forEach(item => {
         const c = document.createElement("div"); const code = getCode(item);
         let statusClass = item.owner ? 'occupied' : 'empty';
-        let dateInfo = "";
-        if (item.owner && item.period) {
-            const diffDays = (new Date(item.period) - now) / 86400000;
-            if (diffDays <= 3) statusClass = 'near-expire-3'; else if (diffDays <= 14) statusClass = 'near-expire-14';
-            dateInfo = `<small style="font-size:0.7rem;">${item.period.slice(5)}</small>`;
-        }
         c.className = `cell ${statusClass}`;
-        c.innerHTML = `<div>${code}</div><div>${item.owner}</div>${dateInfo}`;
+        c.innerHTML = `<div>${code}</div><div>${item.owner}</div>`;
         c.onclick = () => openDetail(item, code); gridPage.appendChild(c);
     });
 }
@@ -337,50 +387,12 @@ function getCode(item) {
     return `${item.zone}${String(item.number).padStart(2, "0")}`;
 }
 
-// --- 商品邏輯 ---
-function handleTypeChange(newType, index) {
-    const p = currentItem.products[index];
-    p.type = newType;
-    if (newType === "展示") p.price = "展示中";
-    renderProducts();
-}
-
-function renderProducts() {
-    const productsDiv = document.getElementById('products');
-    productsDiv.innerHTML = "";
-    currentItem.products.forEach((p, i) => {
-        const r = document.createElement("div");
-        const isLocked = (loginType === "owner" && p.isSaved);
-        r.className = "row";
-        let inner = `<input value="${p.name||''}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名" ${isLocked?"readonly":""}>
-                     <select onchange="handleTypeChange(this.value, ${i})" ${isLocked?"disabled":""}>
-                        <option value="直售" ${p.type==='直售'?'selected':''}>直售</option>
-                        <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
-                        <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
-                     </select>`;
-        if (p.type === "刮卡") {
-            r.style.gridTemplateColumns = isLocked ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr 1fr 40px";
-            inner += `<input type="number" placeholder="格" value="${p.total||''}" oninput="currentItem.products[${i}].total=this.value" ${isLocked?"readonly":""}>
-                      <input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${isLocked?"readonly":""}>`;
-        } else {
-            r.style.gridTemplateColumns = isLocked ? "1fr 1fr 2fr" : "1fr 1fr 2fr 40px";
-            inner += (p.type === "展示") ? `<div class="display-label">展示中</div>` : `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${isLocked?"readonly":""}>`;
-        }
-        if (!isLocked) inner += `<button class="remove-btn" onclick="currentItem.products.splice(${i},1);renderProducts()">✕</button>`;
-        r.innerHTML = inner; productsDiv.appendChild(r);
-    });
-}
-
-function addProduct() { currentItem.products.push({ name: "", type: "直售", price: "", total: "", isSaved: false }); renderProducts(); }
-
 function openDetail(item, code) {
     currentItem = item; dCode.textContent = "位置：" + code;
     dOwner.value = item.owner || ""; dContact.value = item.contact || ""; dRent.value = item.rent || ""; dPeriod.value = item.period || ""; dSignDate.value = item.signDate || "";
     const canEdit = (loginType === "boss") || (loginType === "staff" && !item.owner);
     [dOwner, dContact, dRent, dPeriod, dSignDate].forEach(f => f.readOnly = !canEdit);
-    delBtn.style.display = (loginType === "boss") ? "block" : "none";
     renderProducts(); gridPage.style.display = "none"; detailPage.style.display = "block";
-    window.scrollTo(0,0);
 }
 
 async function saveDetail() {
@@ -390,20 +402,18 @@ async function saveDetail() {
         currentItem.owner = dOwner.value; currentItem.contact = dContact.value; currentItem.rent = dRent.value; 
         currentItem.period = dPeriod.value; currentItem.signDate = dSignDate.value;
         currentItem.products.forEach(p => p.isSaved = true);
-        await saveToCloud(); alert("雲端同步成功"); goBack();
+        await saveToCloud(); goBack();
     }
-}
-
-async function deleteThisCell() { 
-    if (confirm("確定清空該位置？")) { 
-        Object.assign(currentItem, { products: [], owner: "", contact: "", rent: "", period: "", signDate: "" }); 
-        await saveToCloud(); goBack(); 
-    } 
 }
 
 function goBack() { 
     if (detailPage.style.display === "block") { detailPage.style.display = "none"; gridPage.style.display = "grid"; if(currentZone) openZone(currentZone); else showZones(); } 
     else if (currentZone) showZones(); 
+}
+
+function autoFormatDate(input) {
+    let val = input.value.replace(/\D/g, '');
+    if (val.length === 8) { input.value = val.substring(0, 4) + "/" + val.substring(4, 6) + "/" + val.substring(6, 8); } 
 }
 
 function handleSearch() {
@@ -418,15 +428,6 @@ function handleSearch() {
     });
 }
 
-function exportExcel() {
-    const wb = XLSX.utils.book_new();
-    ["A", "B", "C", "D"].forEach(z => {
-        const zoneData = data.filter(d => d.zone === z).map(d => ({ "編號": getCode(d), "格主": d.owner, "電話": d.contact, "租金": d.rent, "到期日": d.period, "商品": d.products.map(p=>`[${p.type}]${p.name}`).join(",") }));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(zoneData), z + "區");
-    });
-    XLSX.writeFile(wb, "格玩維度報表.xlsx");
-}
-
 function handleGlobalKey(e) {
     if (document.getElementById('loginOverlay').style.display !== "none") {
         if (/[0-9]/.test(e.key)) press(e.key);
@@ -436,7 +437,22 @@ function handleGlobalKey(e) {
         e.preventDefault(); goBack();
     }
 }
+
+async function deleteThisCell() { 
+    if (confirm("確定清空該位置？")) { 
+        Object.assign(currentItem, { products: [], owner: "", contact: "", rent: "", period: "", signDate: "" }); 
+        await saveToCloud(); goBack(); 
+    } 
+}
+
+function exportExcel() {
+    const wb = XLSX.utils.book_new();
+    ["A", "B", "C", "D"].forEach(z => {
+        const zoneData = data.filter(d => d.zone === z).map(d => ({ "編號": getCode(d), "格主": d.owner, "電話": d.contact, "租金": d.rent, "到期日": d.period, "商品": d.products.map(p=>`[${p.type}]${p.name}`).join(",") }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(zoneData), z + "區");
+    });
+    XLSX.writeFile(wb, "格玩維度報表.xlsx");
+}
 </script>
 </body>
 </html>
-
