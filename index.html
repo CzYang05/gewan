@@ -8,72 +8,72 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
-/* 核心配色 */
+/* 核心配色：回復原始霓虹版 */
 :root { --primary: #0d1117; --accent: #00d2ff; --success: #39ff14; --danger: #ff3131; --warning: #ffcc00; --bg: #0d1117; --card-bg: rgba(22, 27, 34, 0.9); }
 
 body { 
     font-family: "Microsoft JhengHei", sans-serif; 
-    margin: 0; padding: 1rem; 
+    margin: 0; padding: 10px; 
     background: var(--bg); color: #e6edf3; 
     background-image: radial-gradient(circle at 50% 50%, #161b22 0%, #0d1117 100%); 
-    min-height: 100vh; 
+    min-height: 100vh; overflow-x: hidden;
 }
 
-h1, h2 { text-align: center; text-shadow: 0 0 10px var(--accent); color: var(--accent); }
+h1, h2 { text-align: center; text-shadow: 0 0 10px var(--accent); color: var(--accent); font-size: 1.5rem; }
 
-/* --- 動畫效果 --- */
+/* 震撼鎖定動畫 */
 @keyframes mega-shake {
     0% { transform: translate(0,0); }
-    10% { transform: translate(-8px, -8px); }
-    20% { transform: translate(8px, 8px); }
-    50% { transform: translate(-8px, 8px); }
-    80% { transform: translate(8px, -8px); }
+    10% { transform: translate(-5px, -5px); }
+    20% { transform: translate(5px, 5px); }
+    50% { transform: translate(-5px, 5px); }
     100% { transform: translate(0,0); }
 }
-@keyframes flash-red { 0%, 100% { background: #0d1117; } 50% { background: #660000; } }
-.shake-heavy { animation: mega-shake 0.3s infinite; }
+@keyframes flash-red { 0%, 100% { background: #0d1117; } 50% { background: #600; } }
+.shake-heavy { animation: mega-shake 0.2s infinite; }
 .flash-screen { animation: flash-red 0.2s infinite; }
 
-/* --- UI 元素 --- */
+/* UI 元素 */
 #backBtn { 
-    position: fixed; top: 15px; left: 15px; 
-    width: 50px; height: 50px; border-radius: 50%; 
-    background: rgba(22, 27, 34, 0.85); color: var(--accent); 
+    position: fixed; top: 10px; left: 10px; 
+    width: 44px; height: 44px; border-radius: 50%; 
+    background: rgba(22, 27, 34, 0.9); color: var(--accent); 
     display: none; z-index: 999; border: 2px solid var(--accent);
-    font-size: 24px; cursor: pointer; align-items: center; justify-content: center;
+    font-size: 20px; cursor: pointer; align-items: center; justify-content: center;
 }
 
 .logout-btn { 
-    position: fixed; top: 15px; right: 15px; 
-    background: var(--danger); padding: 10px 18px; border-radius: 10px;
-    font-weight: bold; color: #fff; border: none; z-index: 998; cursor: pointer; display: none; 
+    position: fixed; top: 10px; right: 10px; 
+    background: var(--danger); padding: 8px 12px; border-radius: 8px;
+    font-size: 0.8rem; font-weight: bold; color: #fff; border: none; z-index: 998; display: none; 
 }
 
 #loginOverlay { position: fixed; inset: 0; background: #0d1117; display: flex; justify-content: center; align-items: center; z-index: 9999; }
-.login-box { background: #161b22; padding: 2rem; border-radius: 20px; text-align: center; width: 300px; border: 2px solid var(--accent); position: relative; }
-.pw-screen { background: #000; font-size: 2.2rem; padding: 15px; border-radius: 12px; margin-bottom: 20px; color: var(--accent); min-height: 45px; letter-spacing: 5px; border: 1px solid var(--accent); display: flex; justify-content: center; align-items: center; }
+.login-box { background: #161b22; padding: 1.5rem; border-radius: 20px; text-align: center; width: 85%; max-width: 300px; border: 2px solid var(--accent); position: relative; }
+.pw-screen { background: #000; font-size: 2rem; padding: 10px; border-radius: 12px; margin-bottom: 15px; color: var(--accent); min-height: 40px; border: 1px solid var(--accent); display: flex; justify-content: center; align-items: center; }
+.lock-overlay { position: absolute; inset: 0; background: rgba(30, 0, 0, 0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; border-radius: 20px; border: 2px solid var(--danger); }
 
-/* 鎖定蓋板 */
-.lock-overlay { position: absolute; inset: 0; background: rgba(20, 0, 0, 0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; border-radius: 20px; border: 3px solid var(--danger); }
-
-/* 格位顯示優化 */
-.grid { display: grid; gap: 10px; width: 100%; max-width: 1200px; margin: 1.5rem auto; grid-template-columns: repeat(4, 1fr); }
-.cell { background: var(--card-bg); border-radius: 10px; padding: 12px 5px; text-align: center; cursor: pointer; border: 1px solid #30363d; display: flex; flex-direction: column; justify-content: center; min-height: 90px; line-height: 1.2; }
-.cell b { font-size: 1.1rem; color: var(--accent); display: block; margin-bottom: 4px; }
-.cell span { font-size: 0.85rem; }
+/* 格位顯示優化：A/B區換行 */
+.grid { display: grid; gap: 8px; width: 100%; margin: 1rem auto; grid-template-columns: repeat(4, 1fr); }
+.cell { background: var(--card-bg); border-radius: 10px; padding: 10px 2px; text-align: center; cursor: pointer; border: 1px solid #30363d; min-height: 80px; display: flex; flex-direction: column; justify-content: center; font-size: 0.9rem; }
+.cell b { color: var(--accent); display: block; font-size: 1.1rem; }
+.cell span { display: block; font-size: 0.8rem; opacity: 0.9; }
 .cell.occupied { border: 1px solid var(--success); color: var(--success); }
 
-/* 商品選單修正 */
-.row { display: grid; gap: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; }
-select { padding: 0.7rem 0.3rem; border-radius: 8px; background: #1c2128; border: 1px solid var(--accent); color: #fff; min-width: 85px; font-size: 0.9rem; }
+/* 商品項目手機調整 */
+.row { display: grid; gap: 5px; margin-bottom: 8px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; grid-template-columns: 1.2fr 1fr 0.8fr 30px; }
+input, select { padding: 8px 4px; border-radius: 6px; background: #1c2128; border: 1px solid #30363d; color: #fff; font-size: 0.85rem; width: 100%; box-sizing: border-box; }
+select { border-color: var(--accent); min-width: 65px; }
 
-/* QR Code 彈窗 */
-#qrModal { 
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: white; padding: 20px; border-radius: 15px; z-index: 10001; 
-    display: none; flex-direction: column; align-items: center; border: 5px solid var(--accent);
-}
-#modalBg { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: none; }
+/* QR Code 小彈窗 */
+#qrModal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 15px; border-radius: 15px; z-index: 10001; display: none; flex-direction: column; align-items: center; border: 3px solid var(--accent); width: 220px; }
+#modalBg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; display: none; }
+#qrcode img { width: 180px !important; height: 180px !important; }
+
+button.action { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #fff; margin-top: 10px; font-size: 0.9rem; }
+.primary { background: #00d2ff; }
+.success { background: #27ae60; }
+.danger { background: #e74c3c; }
 </style>
 </head>
 
@@ -82,24 +82,18 @@ select { padding: 0.7rem 0.3rem; border-radius: 8px; background: #1c2128; border
 <div id="loginOverlay">
     <div class="login-box" id="loginBox">
         <div id="lockOverlay" class="lock-overlay">
-            <h3 style="color:var(--danger)">系統鎖定</h3>
+            <h3 style="color:var(--danger); margin:0;">安全鎖定</h3>
             <div id="countDisplay" style="font-size:3rem; color:white"></div>
         </div>
-        <h2>格玩維度系統</h2>
+        <h2 style="margin-top:0;">格玩維度系統</h2>
         <div id="pwDisplay" class="pw-screen"></div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('1')">1</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('2')">2</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('3')">3</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('4')">4</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('5')">5</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('6')">6</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('7')">7</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('8')">8</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('9')">9</button>
-            <button class="num-btn" style="background:#441111; color:var(--danger); border-radius:10px;" onclick="resetPw()">C</button>
-            <button class="num-btn" style="padding:15px; background:#1c2128; color:#fff; border-radius:10px;" onclick="press('0')">0</button>
-            <button class="num-btn" style="background:#114411; color:var(--success); border-radius:10px;" onclick="loginCheck()">OK</button>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <script>
+                for(let i=1; i<=9; i++) document.write(`<button style="padding:15px; background:#1c2128; color:#fff; border:1px solid #30363d; border-radius:10px;" onclick="press('${i}')">${i}</button>`);
+            </script>
+            <button style="background:#411; color:var(--danger); border-radius:10px;" onclick="resetPw()">C</button>
+            <button style="padding:15px; background:#1c2128; color:#fff; border:1px solid #30363d; border-radius:10px;" onclick="press('0')">0</button>
+            <button style="background:#141; color:var(--success); border-radius:10px;" onclick="loginCheck()">OK</button>
         </div>
     </div>
 </div>
@@ -108,34 +102,34 @@ select { padding: 0.7rem 0.3rem; border-radius: 8px; background: #1c2128; border
 <button id="mainLogoutBtn" class="logout-btn" onclick="logout()">登出</button>
 
 <div id="mainUI" style="display:none">
-    <h1 id="pageTitle">工作管理區</h1>
+    <h1 id="pageTitle" style="margin-bottom:10px;">管理模式</h1>
     <div id="gridPage" class="grid"></div>
     
-    <div id="detailPage" style="display:none; max-width:600px; margin: 0 auto; background:var(--card-bg); padding:1.5rem; border-radius:15px;">
-        <h2 id="dCode"></h2>
-        <button id="qrGenBtn" class="action primary" style="width:100%; margin-bottom:1rem; display:none;" onclick="showQr()">📱 生成此格 QR Code</button>
+    <div id="detailPage" style="display:none; max-width:100%;">
+        <h2 id="dCode" style="margin-bottom:15px;"></h2>
+        <button id="qrGenBtn" class="action primary" style="display:none;" onclick="showQr()">📱 生成此格 QR Code</button>
         
-        <div style="font-weight:bold; margin-bottom:10px; color:var(--accent);">📦 商品項目</div>
+        <div style="font-weight:bold; margin:15px 0 8px; color:var(--accent); font-size:0.9rem;">📦 商品管理</div>
         <div id="products"></div>
-        <button class="action primary" style="width:100%; margin: 1rem 0;" onclick="addProduct()">＋ 新增商品</button>
+        <button class="action primary" onclick="addProduct()">＋ 新增項目</button>
 
-        <div style="font-weight:bold; margin-top:1rem; color:var(--accent);">👤 格主資訊</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <input id="dOwner" placeholder="格主姓名">
-            <input id="dContact" placeholder="聯絡電話">
-            <input id="dRent" type="number" placeholder="月租金">
-            <input id="dSignDate" placeholder="簽約日 (YYYYMMDD)" onblur="autoFormatDate(this)">
-            <input id="dPeriod" placeholder="到期日 (YYYYMMDD)" onblur="autoFormatDate(this)" style="grid-column: span 2;">
+        <div style="font-weight:bold; margin:20px 0 8px; color:var(--accent); font-size:0.9rem;">👤 格主資訊</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <input id="dOwner" placeholder="姓名">
+            <input id="dContact" placeholder="電話">
+            <input id="dRent" type="number" placeholder="月租">
+            <input id="dSignDate" placeholder="簽約日" onblur="autoFormatDate(this)">
+            <input id="dPeriod" placeholder="到期日" onblur="autoFormatDate(this)" style="grid-column: span 2;">
         </div>
-        <button class="action success" style="width:100%; margin-top:1.5rem; padding:15px;" onclick="saveDetail()">💾 儲存變更</button>
+        <button class="action success" onclick="saveDetail()">💾 儲存並返回</button>
     </div>
 </div>
 
 <div id="modalBg" onclick="closeQr()"></div>
 <div id="qrModal">
     <div id="qrcode"></div>
-    <p style="color:#000; margin-top:10px; font-weight:bold;" id="qrText"></p>
-    <button class="action danger" onclick="closeQr()">關閉</button>
+    <p style="color:#000; margin:10px 0; font-weight:bold; font-size:0.9rem;" id="qrText"></p>
+    <button class="action danger" style="padding:8px;" onclick="closeQr()">關閉</button>
 </div>
 
 <script>
@@ -153,11 +147,8 @@ function loginCheck() {
     else {
         errorCount++;
         document.getElementById('loginBox').classList.add('shake-heavy');
-        if(errorCount >= 3) {
-            errorCount = 0; triggerLock();
-        } else {
-            setTimeout(() => { document.getElementById('loginBox').classList.remove('shake-heavy'); resetPw(); }, 500);
-        }
+        if(errorCount >= 3) { errorCount = 0; triggerLock(); } 
+        else { setTimeout(() => { document.getElementById('loginBox').classList.remove('shake-heavy'); resetPw(); }, 500); }
     }
 }
 
@@ -169,8 +160,7 @@ function triggerLock() {
     const timer = setInterval(() => {
         document.getElementById('countDisplay').innerText = sec;
         if(sec <= 0) {
-            clearInterval(timer);
-            lock.style.display = 'none';
+            clearInterval(timer); lock.style.display = 'none';
             document.getElementById('loginOverlay').classList.remove('flash-screen');
             document.getElementById('loginBox').classList.remove('shake-heavy');
             resetPw();
@@ -184,7 +174,7 @@ function startApp(type) {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('mainUI').style.display = 'block';
     document.getElementById('mainLogoutBtn').style.display = 'block';
-    document.getElementById('pageTitle').innerText = type==="boss"?"總監":type==="staff"?"員工":"格主";
+    document.getElementById('pageTitle').innerText = type==="boss"?"總監模式":type==="staff"?"員工模式":"格主模式";
     initData(); showZones();
 }
 
@@ -204,7 +194,7 @@ function showZones() {
     document.getElementById('backBtn').style.display = "none";
     ["A", "B", "C", "D"].forEach(z => {
         const d = document.createElement("div"); d.className = "cell";
-        d.innerHTML = `<b>${z} 區</b><span>點擊進入</span>`;
+        d.innerHTML = `<b>${z} 區</b><span>點擊管理</span>`;
         d.onclick = () => openZone(z); grid.appendChild(d);
     });
 }
@@ -216,12 +206,12 @@ function openZone(z) {
         const code = getCode(item);
         const d = document.createElement("div");
         d.className = item.owner ? "cell occupied" : "cell";
-        // A, B 區換行顯示
+        // A, B 區分兩行顯示
         if(z === "A" || z === "B") {
             const parts = code.split(/(?=[0-9])/); 
-            d.innerHTML = `<b>${parts[0]}</b><span>${parts.slice(1).join("")}</span><small>${item.owner||'空'}</small>`;
+            d.innerHTML = `<b>${parts[0]}</b><span>${parts.slice(1).join("")}</span><small style="font-size:10px;">${item.owner||'空'}</small>`;
         } else {
-            d.innerHTML = `<b>${code}</b><small>${item.owner||'空'}</small>`;
+            d.innerHTML = `<b>${code}</b><small style="font-size:10px;">${item.owner||'空'}</small>`;
         }
         d.onclick = () => openDetail(item, code); grid.appendChild(d);
     });
@@ -239,9 +229,8 @@ function openDetail(item, code) {
     currentItem = item;
     document.getElementById('gridPage').style.display = "none";
     document.getElementById('detailPage').style.display = "block";
-    document.getElementById('dCode').innerText = "位置：" + code;
+    document.getElementById('dCode').innerText = code;
     document.getElementById('qrGenBtn').style.display = (loginType === "staff" || loginType === "boss") ? "block" : "none";
-    
     document.getElementById('dOwner').value = item.owner;
     document.getElementById('dContact').value = item.contact;
     document.getElementById('dRent').value = item.rent;
@@ -255,7 +244,6 @@ function renderProducts() {
     container.innerHTML = "";
     currentItem.products.forEach((p, i) => {
         const r = document.createElement("div"); r.className = "row";
-        r.style.gridTemplateColumns = "1.5fr 1fr 1fr 40px";
         r.innerHTML = `
             <input value="${p.name}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名">
             <select onchange="currentItem.products[${i}].type=this.value; renderProducts()">
@@ -263,8 +251,8 @@ function renderProducts() {
                 <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
                 <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
             </select>
-            <input type="number" value="${p.price}" oninput="currentItem.products[${i}].price=this.value" placeholder="價格">
-            <button style="background:none; border:none; color:red; font-size:1.5rem;" onclick="currentItem.products.splice(${i},1); renderProducts()">✕</button>
+            <input type="number" value="${p.price}" oninput="currentItem.products[${i}].price=this.value" placeholder="價">
+            <button style="background:none; border:none; color:red; font-size:1.2rem;" onclick="currentItem.products.splice(${i},1); renderProducts()">✕</button>
         `;
         container.appendChild(r);
     });
@@ -279,7 +267,7 @@ function saveDetail() {
     currentItem.signDate = document.getElementById('dSignDate').value;
     currentItem.period = document.getElementById('dPeriod').value;
     localStorage.setItem("gw_data", JSON.stringify(data));
-    alert("儲存成功"); goBack();
+    goBack();
 }
 
 function goBack() { 
@@ -297,13 +285,13 @@ function showQr() {
     document.getElementById('qrText').innerText = "格位：" + code;
     new QRCode(document.getElementById("qrcode"), {
         text: window.location.href + "?cell=" + code,
-        width: 200, height: 200
+        width: 180, height: 180
     });
 }
 function closeQr() { document.getElementById('modalBg').style.display = "none"; document.getElementById('qrModal').style.display = "none"; }
 function autoFormatDate(i) { if(i.value.length===8) i.value = i.value.replace(/(\d{4})(\d{2})(\d{2})/, "$1/$2/$3"); }
 function logout() { location.reload(); }
+function handleGlobalKey(e) { if(e.key === "Enter") loginCheck(); }
 </script>
-
 </body>
 </html>
