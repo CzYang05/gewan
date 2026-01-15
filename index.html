@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>格玩維度｜雲端管理系統 Pro</title>
+<title>格玩維度管理系統 </title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
@@ -171,8 +171,8 @@ button.action { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-w
             <div><label>🔎姓名</label><input id="dOwner"></div>
             <div><label>📲電話</label><input id="dContact"></div>
             <div><label>💴租金</label><input type="number" id="dRent"></div>
-            <div><label>📅簽約</label><input id="dSignDate" onblur="autoFormatDate(this)"></div>
-            <div style="grid-column: span 2;"><label>📆到期</label><input id="dPeriod" onblur="autoFormatDate(this)"></div>
+            <div><label>📅簽約日期</label><input id="dSignDate" onblur="autoFormatDate(this)"></div>
+            <div style="grid-column: span 2;"><label>📆合約到期</label><input id="dPeriod" onblur="autoFormatDate(this)"></div>
         </div>
         <div style="display:flex; gap:10px;">
             <button class="action success" style="flex:2" id="saveBtn" onclick="saveDetail()">💾 儲存所有變更</button>
@@ -439,3 +439,4 @@ function handleGlobalKey(e) {
 </script>
 </body>
 </html>
+
