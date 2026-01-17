@@ -91,7 +91,7 @@ input[type="file"] { display: none; }
 #loginOverlay { position: fixed; inset: 0; background: #0d1117; display: flex; justify-content: center; align-items: center; z-index: 9999; }
 .login-box { background: #161b22; padding: 2rem; border-radius: 20px; text-align: center; width: 300px; border: 2px solid var(--accent); position: relative; }
 .pw-screen { 
-    background: #000; font-size: 2.2rem; padding: 15px; border-radius: 12px; 
+    background: #000; font-size: 1.5rem; padding: 15px; border-radius: 12px; 
     margin-bottom: 20px; color: var(--accent); min-height: 45px; 
     letter-spacing: 5px; border: 1px solid var(--accent); 
     display: flex; justify-content: center; align-items: center;
@@ -245,14 +245,41 @@ function updateDisplay() { document.getElementById('pwDisplay').innerText = "•
 
 async function loginCheck() { 
     if(isLocked) return;
+    const screen = document.getElementById('pwDisplay');
+    
     if (["1688", "6969", "9527"].includes(tempPw)) {
         let type = (tempPw === "1688") ? "boss" : (tempPw === "6969" ? "staff" : "owner");
+        
+        // 顯示讀取中
+        screen.style.letterSpacing = "2px";
+        screen.innerText = "讀取中...";
+        
         await loadFromCloud();
-        startApp(type);
+        
+        // 顯示讀取完成與歡迎
+        screen.innerText = "讀取完成，歡迎";
+        
+        setTimeout(() => {
+            startApp(type);
+            resetPw();
+            screen.style.letterSpacing = "5px"; 
+        }, 800);
+        
     } else { 
         errorCounter++;
+        screen.style.letterSpacing = "2px";
+        screen.style.color = "var(--danger)";
+        screen.innerText = "輸入錯誤";
+        
         document.getElementById('loginBox').classList.add('shake-heavy');
-        setTimeout(() => { document.getElementById('loginBox').classList.remove('shake-heavy'); resetPw(); }, 500);
+        
+        setTimeout(() => { 
+            document.getElementById('loginBox').classList.remove('shake-heavy'); 
+            screen.style.color = "var(--accent)";
+            screen.style.letterSpacing = "5px";
+            resetPw(); 
+        }, 800);
+
         if (errorCounter >= 3) triggerLockdown();
     } 
 }
