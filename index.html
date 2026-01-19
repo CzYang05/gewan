@@ -175,9 +175,14 @@ button.action { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-w
             <h2 id="dCode" style="margin: 0;"></h2>
             <button id="singleExportBtn" class="action warning" style="padding: 5px 12px; font-size: 0.8rem;" onclick="exportSingleExcel()">📊 下載此格主 Excel</button>
         </div>
-        <div style="font-weight:bold; margin-bottom:10px; color:var(--accent);">📦 商品管理</div>
-        <div id="products"></div>
+        
+        <div id="productSection">
+            <div style="font-weight:bold; margin-bottom:10px; color:var(--accent);">📦 商品管理</div>
+            <div id="products"></div>
+        </div>
+
         <button id="addProdBtn" class="action primary" style="margin-bottom:2rem; width:100%" onclick="addProduct()">＋ 新增商品項目</button>
+        
         <div style="font-weight:bold; margin-bottom:10px; color:var(--accent);">👤 格主資訊</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:1.5rem;">
             <div><label>🔎姓名</label><input id="dOwner"></div>
@@ -189,7 +194,7 @@ button.action { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-w
         </div>
         <div style="display:flex; gap:10px;">
             <button class="action success" style="flex:2" id="saveBtn" onclick="saveDetail()">💾 儲存所有變更</button>
-            <button class="action danger" style="flex:1;" id="delBtn" onclick="deleteThisCell()">❌ 刪除</button>
+            <button class="action danger" style="flex:1;" id="delBtn" onclick="deleteThisCell()">❌ 清空</button>
         </div>
     </div>
 </div>
@@ -208,9 +213,7 @@ let currentZone = null, currentItem = null, tempPw = "", loginType = "";
 let errorCounter = 0, isLocked = false, autoSyncTimer = null;
 
 window.onload = async () => {
-    // 檢查 localStorage 鎖定狀態
     checkPersistentLock();
-
     const savedSession = localStorage.getItem("gw_login_session");
     if (savedSession) {
         document.getElementById('loginOverlay').style.display = "none";
@@ -224,16 +227,15 @@ function checkPersistentLock() {
     const lockUntil = localStorage.getItem("gw_locked_until");
     if (lockUntil) {
         const remaining = Math.ceil((parseInt(lockUntil) - Date.now()) / 1000);
-        if (remaining > 0) {
-            triggerLockdown(remaining);
-        } else {
-            localStorage.removeItem("gw_locked_until");
-        }
+        if (remaining > 0) triggerLockdown(remaining);
+        else localStorage.removeItem("gw_locked_until");
     }
 }
 
 async function loadFromCloud() {
+    // 編輯中不自動刷新，避免輸入內容消失
     if (document.getElementById('detailPage').style.display === "block") return;
+    
     document.getElementById('syncStatus').innerText = "雲端同步中...";
     try {
         const response = await fetch(CLOUD_URL);
@@ -244,44 +246,29 @@ async function loadFromCloud() {
             if (currentZone) openZone(currentZone); else showZones();
         }
         document.getElementById('syncStatus').innerText = "雲端狀態：已同步 " + new Date().toLocaleTimeString();
+        document.getElementById('syncStatus').style.color = "#555";
     } catch (e) {
         data = JSON.parse(localStorage.getItem("gw_data")) || [];
+        document.getElementById('syncStatus').innerText = "雲端狀態：離線模式";
     }
 }
 
 async function saveToCloud() {
     const btn = document.getElementById('saveBtn');
-    const status = document.getElementById('syncStatus');
     if(btn) { btn.innerText = "同步中..."; btn.disabled = true; }
-    
-    status.innerText = "正在上傳至雲端...";
-    status.style.color = "var(--warning)";
-
     try {
-        // 更新本地快取，防止斷網丟失
         localStorage.setItem("gw_data", JSON.stringify(data));
-
-        const response = await fetch(CLOUD_URL, {
-            method: "POST",
-            mode: 'no-cors', // 保持 no-cors 避免跨域阻擋，但這會拿不到 response
-            body: JSON.stringify(data)
-        });
-
-        // 因為 no-cors 拿不到 response，我們設定一個短暫延遲後顯示成功
-        setTimeout(() => {
-            status.innerText = "雲端狀態：同步成功 " + new Date().toLocaleTimeString();
-            status.style.color = "var(--success)";
-        }, 1000);
-
-    } catch (e) {
-        console.error("同步失敗:", e);
-        status.innerText = "雲端狀態：同步失敗！";
-        status.style.color = "var(--danger)";
-        throw e;
+        await fetch(CLOUD_URL, { method: "POST", body: JSON.stringify(data), mode: 'no-cors' });
+        document.getElementById('syncStatus').innerText = "雲端狀態：同步成功 " + new Date().toLocaleTimeString();
+        document.getElementById('syncStatus').style.color = "var(--success)";
+    } catch (e) { 
+        console.error("同步失敗"); 
+        document.getElementById('syncStatus').innerText = "雲端狀態：同步失敗";
+        document.getElementById('syncStatus').style.color = "var(--danger)";
     }
-    
     if(btn) { btn.innerText = "💾 儲存所有變更"; btn.disabled = false; }
 }
+
 function press(n) { if(!isLocked && tempPw.length < 4) { tempPw += n; updateDisplay(); } }
 function resetPw() { tempPw = ""; updateDisplay(); }
 function updateDisplay() { document.getElementById('pwDisplay').innerText = "•".repeat(tempPw.length); }
@@ -290,19 +277,20 @@ async function loginCheck() {
     if(isLocked) return;
     const screen = document.getElementById('pwDisplay');
     
-    // 管理者：1688, 一般模式：9527, 備用：6969
-    const isAdmin = (tempPw === "1688" || tempPw === "6969");
+    // 指令規範：9527 一般模式，1688與9527皆可為管理者
+    const isAdmin = (tempPw === "1688" || tempPw === "9527");
     const isOwner = (tempPw === "9527");
 
     if (isAdmin || isOwner) {
-        let type = isAdmin ? "boss" : "owner";
+        let type = (tempPw === "1688") ? "boss" : (tempPw === "9527" ? "boss" : "owner"); 
+        // 注意：若 9527 預設進管理者請設為 boss，若 9527 是看權限請自行切換
+        
         screen.style.letterSpacing = "1px";
         screen.innerText = "讀取中...";
         
-        // 模擬讀取並獲取資料
         await loadFromCloud();
         
-        screen.innerText = "讀取完成，歡迎";
+        screen.innerText = "讀取完成，歡迎"; 
         localStorage.setItem("gw_login_session", type); 
         
         setTimeout(() => {
@@ -331,15 +319,11 @@ function triggerLockdown(seconds) {
     const overlay = document.getElementById('lockOverlay');
     overlay.style.display = 'flex';
     let timeLeft = seconds;
-    
     const timer = setInterval(() => {
         document.getElementById('countDisplay').innerText = timeLeft;
         if (timeLeft <= 0) { 
-            clearInterval(timer); 
-            overlay.style.display = 'none'; 
-            isLocked = false; 
-            localStorage.removeItem("gw_locked_until");
-            resetPw(); 
+            clearInterval(timer); overlay.style.display = 'none'; isLocked = false; 
+            localStorage.removeItem("gw_locked_until"); resetPw(); 
         }
         timeLeft--;
     }, 1000);
@@ -353,128 +337,129 @@ function startApp(type) {
     document.getElementById('pageTitle').innerText = (type==="boss"?"總監模式":"格主模式");
     if(type === "boss") document.getElementById('excelBtnContainer').style.display = "block";
     showZones(); 
-if(autoSyncTimer) clearInterval(autoSyncTimer);
-    // 登入 10 秒後才開啟循環同步，給手動存檔留緩衝時間
-    setTimeout(() => {
-        autoSyncTimer = setInterval(loadFromCloud, 30000);
-    }, 10000);
-}
-function logout() { 
-    if(confirm("確定登出系統？")) {
-        if(autoSyncTimer) clearInterval(autoSyncTimer);
-        localStorage.removeItem("gw_login_session");
-        location.reload(); 
-    }
-}
-
-function handleGlobalKey(e) {
-    const isInput = (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA");
-    if (document.getElementById('loginOverlay').style.display !== "none") {
-        if (/[0-9]/.test(e.key)) press(e.key);
-        if (e.key === "Enter") loginCheck();
-        if (e.key === "Backspace") { e.preventDefault(); resetPw(); }
-        return;
-    }
-    if (!isInput) {
-        if (e.key === "Backspace") { e.preventDefault(); goBack(); }
-        if (e.key === "Enter") {
-             if (document.getElementById('detailPage').style.display === "block") saveDetail();
-        }
-    }
+    if(autoSyncTimer) clearInterval(autoSyncTimer);
+    autoSyncTimer = setInterval(loadFromCloud, 30000);
 }
 
 function renderProducts() {
     const productsDiv = document.getElementById('products');
-    productsDiv.innerHTML = "";
-    currentItem.products.forEach((p, i) => {
-        const r = document.createElement("div");
-        const isSold = (p.type === "已售出");
-        const isOwner = (loginType === "owner"); 
-        const isAdmin = (loginType === "boss"); 
-        const forceLocked = (isOwner && p.isSaved);
-        r.className = "row";
-        if(isSold) { r.style.border = "1px solid var(--danger)"; r.style.boxShadow = "inset 0 0 10px rgba(255, 49, 49, 0.2)"; }
-        let imgHTML = p.img 
-            ? `<div style="position:relative"><img src="${p.img}" class="img-preview" onclick="viewImage('${p.img}')">${!forceLocked ? `<div onclick="triggerUpload(${i})" style="position:absolute; bottom:0; right:0; background:rgba(0,0,0,0.6); font-size:10px; padding:2px; cursor:pointer;">🔄</div>` : ''}</div>`
-            : `<div class="img-upload-placeholder" ${forceLocked ? "" : `onclick="triggerUpload(${i})"`}>📷</div>`;
-        let fileInput = `<input type="file" id="file-${i}" accept="image/*" onchange="handleImgUpload(this, ${i})">`;
-        let inner = `${imgHTML} ${fileInput}
-                     <div style="display:flex; flex-direction:column; gap:2px; width:100%;">
-                        ${isSold ? '<span style="color:var(--danger); font-size:0.7rem; font-weight:bold; margin-bottom:2px;">🚩 已售出</span>' : ''}
-                        <input value="${p.name||''}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名" ${forceLocked?"readonly":""}>
-                     </div>
-                     <select onchange="handleTypeChange(this.value, ${i})" ${forceLocked?"disabled":""}>
-                        <option value="直售" ${p.type==='直售' || isSold ?'selected':''}>直售</option>
-                        <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
-                        <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
-                     </select>`;
-        const showActionArea = isAdmin || (!forceLocked);
-        if (p.type === "刮卡") {
-            r.style.gridTemplateColumns = showActionArea ? "60px 1.5fr 1fr 1fr 1fr 80px" : "60px 1.5fr 1fr 1fr 1fr";
-            inner += `<input type="number" placeholder="格" value="${p.total||''}" oninput="currentItem.products[${i}].total=this.value" ${forceLocked?"readonly":""}>
-                      <input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${forceLocked?"readonly":""}>`;
-        } else {
-            r.style.gridTemplateColumns = showActionArea ? "60px 1.5fr 1fr 2fr 80px" : "60px 1.5fr 1fr 2fr";
-            inner += `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${forceLocked?"readonly":""}>`;
-        }
-        if (showActionArea) {
-            inner += `<div style="display:flex; gap:5px; justify-content:center;">`;
-            if (isAdmin) { inner += `<button class="sold-btn" onclick="toggleSold(${i})">${isSold ? "🔙" : "💰"}</button>`; }
-            if (isAdmin || !forceLocked) { inner += `<button class="remove-btn" onclick="removeProduct(${i})">✕</button>`; }
-            inner += `</div>`;
-        }
-        r.innerHTML = inner; productsDiv.appendChild(r);
-    });
-}
-
-async function toggleSold(i) {
-    const p = currentItem.products[i];
-    if (p.type === "已售出") { p.type = "直售"; } 
-    else { if(confirm("確定將此商品標記為「已售出」？")) p.type = "已售出"; else return; }
-    renderProducts();
-    await saveToCloud();
-}
-
-function handleTypeChange(newType, index) {
-    currentItem.products[index].type = newType;
-    if (newType === "展示") currentItem.products[index].price = "展示中";
-    renderProducts();
-}
-
-async function addProduct() { currentItem.products.push({ name: "", type: "直售", price: "", total: "", isSaved: false, img: "" }); renderProducts(); }
-async function removeProduct(i) { if(confirm("確定刪除此商品？")) { currentItem.products.splice(i, 1); renderProducts(); } }
-function triggerUpload(index) { document.getElementById(`file-${index}`).click(); }
-
-function handleImgUpload(input, index) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 600; let width = img.width, height = img.height;
-                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                canvas.width = width; canvas.height = height;
-                canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-                currentItem.products[index].img = canvas.toDataURL("image/jpeg", 0.7);
-                renderProducts();
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(input.files[0]);
+    const section = document.getElementById('productSection');
+    
+    if (!currentItem.products || currentItem.products.length === 0) {
+        section.style.display = "none";
+        productsDiv.innerHTML = "";
+    } else {
+        section.style.display = "block";
+        productsDiv.innerHTML = "";
+        currentItem.products.forEach((p, i) => {
+            const r = document.createElement("div");
+            const isSold = (p.type === "已售出");
+            const isOwner = (loginType === "owner"); 
+            const isAdmin = (loginType === "boss"); 
+            const forceLocked = (isOwner && p.isSaved);
+            r.className = "row";
+            if(isSold) { r.style.border = "1px solid var(--danger)"; r.style.boxShadow = "inset 0 0 10px rgba(255, 49, 49, 0.2)"; }
+            
+            let imgHTML = p.img 
+                ? `<div style="position:relative"><img src="${p.img}" class="img-preview" onclick="viewImage('${p.img}')">${!forceLocked ? `<div onclick="triggerUpload(${i})" style="position:absolute; bottom:0; right:0; background:rgba(0,0,0,0.6); font-size:10px; padding:2px; cursor:pointer;">🔄</div>` : ''}</div>`
+                : `<div class="img-upload-placeholder" ${forceLocked ? "" : `onclick="triggerUpload(${i})"`}>📷</div>`;
+            
+            let fileInput = `<input type="file" id="file-${i}" accept="image/*" onchange="handleImgUpload(this, ${i})">`;
+            let inner = `${imgHTML} ${fileInput}
+                         <div style="display:flex; flex-direction:column; gap:2px; width:100%;">
+                            ${isSold ? '<span style="color:var(--danger); font-size:0.7rem; font-weight:bold; margin-bottom:2px;">🚩 已售出</span>' : ''}
+                            <input value="${p.name||''}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名" ${forceLocked?"readonly":""}>
+                         </div>
+                         <select onchange="handleTypeChange(this.value, ${i})" ${forceLocked?"disabled":""}>
+                            <option value="直售" ${p.type==='直售' || isSold ?'selected':''}>直售</option>
+                            <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
+                            <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
+                         </select>`;
+            
+            const showActionArea = isAdmin || (!forceLocked);
+            if (p.type === "刮卡") {
+                r.style.gridTemplateColumns = showActionArea ? "60px 1.5fr 1fr 1fr 1fr 80px" : "60px 1.5fr 1fr 1fr 1fr";
+                inner += `<input type="number" placeholder="格" value="${p.total||''}" oninput="currentItem.products[${i}].total=this.value" ${forceLocked?"readonly":""}>
+                          <input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${forceLocked?"readonly":""}>`;
+            } else {
+                r.style.gridTemplateColumns = showActionArea ? "60px 1.5fr 1fr 2fr 80px" : "60px 1.5fr 1fr 2fr";
+                inner += `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${forceLocked?"readonly":""}>`;
+            }
+            if (showActionArea) {
+                inner += `<div style="display:flex; gap:5px; justify-content:center;">`;
+                if (isAdmin) inner += `<button class="sold-btn" onclick="toggleSold(${i})">${isSold ? "🔙" : "💰"}</button>`;
+                inner += `<button class="remove-btn" onclick="removeProduct(${i})">✕</button>`;
+                inner += `</div>`;
+            }
+            r.innerHTML = inner; productsDiv.appendChild(r);
+        });
     }
 }
 
-function viewImage(src) {
-    const overlay = document.getElementById('imageOverlay');
-    document.getElementById('fullImage').src = src;
-    overlay.style.display = 'flex';
+function addProduct() { 
+    if (!currentItem.products) currentItem.products = [];
+    currentItem.products.push({ name: "", type: "直售", price: "", total: "", isSaved: false, img: "" }); 
+    renderProducts(); 
+}
+
+async function saveDetail() {
+    if (loginType === "boss") {
+        currentItem.owner = document.getElementById('dOwner').value;
+        currentItem.contact = document.getElementById('dContact').value;
+        currentItem.rent = document.getElementById('dRent').value;
+        currentItem.deposit = document.getElementById('dDeposit').value;
+        currentItem.period = document.getElementById('dPeriod').value;
+        currentItem.signDate = document.getElementById('dSignDate').value;
+    }
+    
+    if (currentItem.products) {
+        currentItem.products.forEach(p => { if (p.name || p.img) p.isSaved = true; });
+    }
+
+    if (loginType === "owner") {
+        if (confirm("儲存後現有商品將鎖定且不可刪除，確定儲存？")) { await saveToCloud(); goBack(); }
+    } else {
+        await saveToCloud(); goBack();
+    }
+}
+
+async function deleteThisCell() {
+    if (loginType !== "boss") return;
+    if (confirm(`確定要清空 ${getCode(currentItem)} 的格主資料嗎？`)) {
+        currentItem.owner = ""; currentItem.contact = ""; currentItem.rent = "";
+        currentItem.deposit = ""; currentItem.period = ""; currentItem.signDate = "";
+        currentItem.products = [];
+        await saveToCloud();
+        goBack();
+    }
+}
+
+function openDetail(item, code) {
+    currentItem = item; document.getElementById('dCode').textContent = "位置：" + code;
+    document.getElementById('dOwner').value = item.owner || ""; 
+    document.getElementById('dContact').value = item.contact || ""; 
+    document.getElementById('dRent').value = item.rent || ""; 
+    document.getElementById('dDeposit').value = item.deposit || ""; 
+    document.getElementById('dPeriod').value = item.period || ""; 
+    document.getElementById('dSignDate').value = item.signDate || "";
+    
+    let canEditInfo = (loginType === "boss");
+    const fields = ['dOwner', 'dContact', 'dRent', 'dDeposit', 'dPeriod', 'dSignDate'];
+    fields.forEach(f => document.getElementById(f).readOnly = !canEditInfo);
+    
+    document.getElementById('delBtn').style.display = (loginType === "boss") ? "block" : "none";
+    renderProducts(); 
+    document.getElementById('gridPage').style.display = "none"; 
+    document.getElementById('detailPage').style.display = "block";
+    document.getElementById('searchBarUI').style.display = "none";
+    document.getElementById('backBtn').style.display = "flex";
 }
 
 function showZones() {
     currentZone = null; const grid = document.getElementById('gridPage'); grid.innerHTML = ""; 
     document.getElementById('detailPage').style.display = "none"; grid.style.display = "grid"; 
     document.getElementById('backBtn').style.display = "none";
+    document.getElementById('searchBarUI').style.display = "block";
     ["A", "B", "C", "D"].forEach(z => {
         const div = document.createElement("div"); div.className = `cell empty`;
         div.innerHTML = `<div>${z} 區</div><small>租: ${data.filter(d => d.zone === z && d.owner).length}</small>`;
@@ -485,6 +470,7 @@ function showZones() {
 function openZone(z) {
     currentZone = z; const grid = document.getElementById('gridPage'); grid.innerHTML = ""; 
     document.getElementById('backBtn').style.display = "flex";
+    document.getElementById('searchBarUI').style.display = "block";
     const today = new Date();
     data.filter(d => d.zone === z).forEach(item => {
         const c = document.createElement("div"); const code = getCode(item);
@@ -511,60 +497,30 @@ function getCode(item) {
     return `${item.zone}${String(item.number).padStart(2, "0")}`;
 }
 
-function openDetail(item, code) {
-    currentItem = item; document.getElementById('dCode').textContent = "位置：" + code;
-    document.getElementById('dOwner').value = item.owner || ""; 
-    document.getElementById('dContact').value = item.contact || ""; 
-    document.getElementById('dRent').value = item.rent || ""; 
-    document.getElementById('dDeposit').value = item.deposit || ""; 
-    document.getElementById('dPeriod').value = item.period || ""; 
-    document.getElementById('dSignDate').value = item.signDate || "";
-    let canEditInfo = (loginType === "boss");
-    [dOwner, dContact, dRent, dDeposit, dPeriod, dSignDate].forEach(f => f.readOnly = !canEditInfo);
-    document.getElementById('delBtn').style.display = (loginType === "owner") ? "none" : "block";
-    renderProducts(); document.getElementById('gridPage').style.display = "none"; document.getElementById('detailPage').style.display = "block";
-}
-
-async function saveDetail() {
-    // 1. 強制更新當前項目的資料 (確保從 input 抓取最新值)
-    if (loginType !== "owner") {
-        currentItem.owner = document.getElementById('dOwner').value;
-        currentItem.contact = document.getElementById('dContact').value;
-        currentItem.rent = document.getElementById('dRent').value;
-        currentItem.deposit = document.getElementById('dDeposit').value;
-        currentItem.period = document.getElementById('dPeriod').value;
-        currentItem.signDate = document.getElementById('dSignDate').value;
-    }
-
-    // 2. 處理商品鎖定與同步
-    if (loginType === "owner") {
-        if (confirm("儲存後現有商品將鎖定且不可刪除，確定儲存？")) {
-            currentItem.products.forEach(p => p.isSaved = true);
-            await forceSave();
-        }
-    } else {
-        currentItem.products.forEach(p => p.isSaved = true);
-        await forceSave();
-    }
-}
-
-// 獨立出來的強制存檔函式
-async function forceSave() {
-    try {
-        await saveToCloud(); // 呼叫下方的 POST 同步
-        goBack();
-    } catch (e) {
-        alert("存檔失敗，請檢查網路連線或圖片是否過大！");
-    }
-}
+function logout() { if(confirm("確定登出系統？")) { localStorage.removeItem("gw_login_session"); location.reload(); } }
 
 function goBack() { 
     if (document.getElementById('detailPage').style.display === "block") { 
         document.getElementById('detailPage').style.display = "none"; 
         document.getElementById('gridPage').style.display = "grid"; 
+        document.getElementById('searchBarUI').style.display = "block";
         if(currentZone) openZone(currentZone); else showZones(); 
     } 
     else if (currentZone) showZones(); 
+}
+
+function handleGlobalKey(e) {
+    const isInput = (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA");
+    if (document.getElementById('loginOverlay').style.display !== "none") {
+        if (/[0-9]/.test(e.key)) press(e.key);
+        if (e.key === "Enter") loginCheck();
+        if (e.key === "Backspace") { e.preventDefault(); resetPw(); }
+        return;
+    }
+    if (!isInput) {
+        if (e.key === "Backspace") { e.preventDefault(); goBack(); }
+        if (e.key === "Enter") { if (document.getElementById('detailPage').style.display === "block") saveDetail(); }
+    }
 }
 
 function autoFormatDate(input) {
@@ -572,30 +528,82 @@ function autoFormatDate(input) {
     if (val.length === 8) { input.value = val.substring(0, 4) + "/" + val.substring(4, 6) + "/" + val.substring(6, 8); } 
 }
 
-function handleSearch() {
-    const term = document.getElementById('searchInput').value.trim();
-    const grid = document.getElementById('gridPage');
-    if (term === "") { if (currentZone) openZone(currentZone); else showZones(); return; }
-    grid.innerHTML = ""; document.getElementById('backBtn').style.display = "flex";
-    data.filter(d => (d.owner && d.owner.includes(term)) || (d.contact && d.contact.includes(term))).forEach(item => {
-        const c = document.createElement("div"); const code = getCode(item);
-        c.className = `cell occupied`;
-        c.innerHTML = `<div>${code}</div><div>${item.owner}</div>`;
-        c.onclick = () => openDetail(item, code); grid.appendChild(c);
-    });
+async function toggleSold(i) {
+    const p = currentItem.products[i];
+    if (p.type === "已售出") p.type = "直售";
+    else { if(confirm("確定標記為已售出？")) p.type = "已售出"; else return; }
+    renderProducts(); await saveToCloud();
 }
 
-async function deleteThisCell() { 
-    if (confirm("確定清空該位置？")) { 
-        Object.assign(currentItem, { products: [], owner: "", contact: "", rent: "", deposit: "", period: "", signDate: "" }); 
-        await saveToCloud(); goBack(); 
+function handleTypeChange(v, i) { 
+    currentItem.products[i].type = v; 
+    if (v === "展示") currentItem.products[i].price = "展示中"; 
+    renderProducts(); 
+}
+
+async function removeProduct(i) { 
+    if(confirm("確定刪除此商品項目？")) { 
+        currentItem.products.splice(i, 1); 
+        renderProducts(); 
+        await saveToCloud();
     } 
+}
+
+function triggerUpload(i) { document.getElementById(`file-${i}`).click(); }
+
+function handleImgUpload(input, i) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 600; let w = img.width, h = img.height;
+                if (w > MAX_WIDTH) { h *= MAX_WIDTH / w; w = MAX_WIDTH; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                currentItem.products[i].img = canvas.toDataURL("image/jpeg", 0.7);
+                renderProducts();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function viewImage(src) { document.getElementById('fullImage').src = src; document.getElementById('imageOverlay').style.display = 'flex'; }
+
+function handleSearch() {
+    const term = document.getElementById('searchInput').value.trim().toLowerCase();
+    const grid = document.getElementById('gridPage');
+    if (term === "") { if (currentZone) openZone(currentZone); else showZones(); return; }
+    
+    grid.innerHTML = "";
+    document.getElementById('backBtn').style.display = "flex";
+    const results = data.filter(d => (d.owner && d.owner.toLowerCase().includes(term)) || (d.contact && d.contact.includes(term)));
+    
+    results.forEach(item => {
+        const c = document.createElement("div");
+        const code = getCode(item);
+        c.className = `cell occupied`;
+        c.innerHTML = `<div>${code}</div><div style="font-weight:bold;">${item.owner}</div><div style="font-size:0.7rem;">${item.zone}區</div>`;
+        c.onclick = () => openDetail(item, code);
+        grid.appendChild(c);
+    });
 }
 
 function exportExcel() {
     const wb = XLSX.utils.book_new();
     ["A", "B", "C", "D"].forEach(z => {
-        const zoneData = data.filter(d => d.zone === z).map(d => ({ "編號": getCode(d), "格主": d.owner, "電話": d.contact, "月租": d.rent, "押金": d.deposit, "到期日": d.period, "商品": d.products.map(p=>`[${p.type}]${p.name}`).join(",") }));
+        const zoneData = data.filter(d => d.zone === z).map(d => ({ 
+            "編號": getCode(d), 
+            "格主": d.owner, 
+            "電話": d.contact, 
+            "月租": d.rent, 
+            "押金": d.deposit, 
+            "到期日": d.period, 
+            "商品": d.products ? d.products.map(p=>`[${p.type}]${p.name}`).join(",") : "" 
+        }));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(zoneData), z + "區");
     });
     XLSX.writeFile(wb, "格玩維度總報表.xlsx");
@@ -604,16 +612,17 @@ function exportExcel() {
 function exportSingleExcel() {
     const wb = XLSX.utils.book_new();
     const code = getCode(currentItem);
-    const ownerInfo = [
-        ["位置", code], ["格主姓名", currentItem.owner], ["聯絡電話", currentItem.contact], ["月租金", currentItem.rent], ["押金", currentItem.deposit], ["簽約日期", currentItem.signDate], ["到期日期", currentItem.period], ["", ""], ["商品細目", "類型", "單價/格數", "詳情"]
+    const info = [
+        ["位置", code], ["姓名", currentItem.owner], ["電話", currentItem.contact], 
+        ["租金", currentItem.rent], ["押金", currentItem.deposit], ["簽約", currentItem.signDate], 
+        ["到期", currentItem.period], ["", ""], 
+        ["品名", "類型", "單價", "詳情"]
     ];
-    currentItem.products.forEach(p => {
-        let detail = p.type === "刮卡" ? `${p.total}格` : (p.type === "展示" ? "展示中" : (p.type === "已售出" ? "已結清" : ""));
-        ownerInfo.push([p.name, p.type, p.price, detail]);
-    });
-    const ws = XLSX.utils.aoa_to_sheet(ownerInfo);
-    XLSX.utils.book_append_sheet(wb, ws, "格主資料");
-    XLSX.writeFile(wb, `格主報表_${code}_${currentItem.owner || '空'}.xlsx`);
+    if (currentItem.products) {
+        currentItem.products.forEach(p => info.push([p.name, p.type, p.price, p.type==="刮卡"?p.total:"" ]));
+    }
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(info), "報表");
+    XLSX.writeFile(wb, `報表_${code}.xlsx`);
 }
 </script>
 </body>
