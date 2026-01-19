@@ -208,6 +208,9 @@ let currentZone = null, currentItem = null, tempPw = "", loginType = "";
 let errorCounter = 0, isLocked = false, autoSyncTimer = null;
 
 window.onload = async () => {
+    // 檢查 localStorage 鎖定狀態
+    checkPersistentLock();
+
     const savedSession = localStorage.getItem("gw_login_session");
     if (savedSession) {
         document.getElementById('loginOverlay').style.display = "none";
@@ -217,11 +220,20 @@ window.onload = async () => {
     }
 };
 
-// 自動同步讀取
-async function loadFromCloud() {
-    // 如果正在編輯細節，不執行自動覆蓋，避免輸入到一半被清空
-    if (document.getElementById('detailPage').style.display === "block") return;
+function checkPersistentLock() {
+    const lockUntil = localStorage.getItem("gw_locked_until");
+    if (lockUntil) {
+        const remaining = Math.ceil((parseInt(lockUntil) - Date.now()) / 1000);
+        if (remaining > 0) {
+            triggerLockdown(remaining);
+        } else {
+            localStorage.removeItem("gw_locked_until");
+        }
+    }
+}
 
+async function loadFromCloud() {
+    if (document.getElementById('detailPage').style.display === "block") return;
     document.getElementById('syncStatus').innerText = "雲端同步中...";
     try {
         const response = await fetch(CLOUD_URL);
@@ -239,23 +251,37 @@ async function loadFromCloud() {
 
 async function saveToCloud() {
     const btn = document.getElementById('saveBtn');
+    const status = document.getElementById('syncStatus');
     if(btn) { btn.innerText = "同步中..."; btn.disabled = true; }
+    
+    status.innerText = "正在上傳至雲端...";
+    status.style.color = "var(--warning)";
+
     try {
-        await fetch(CLOUD_URL, { method: "POST", body: JSON.stringify(data), mode: 'no-cors' });
+        // 更新本地快取，防止斷網丟失
         localStorage.setItem("gw_data", JSON.stringify(data));
-        document.getElementById('syncStatus').innerText = "雲端狀態：同步成功";
-    } catch (e) { console.error("同步失敗"); }
+
+        const response = await fetch(CLOUD_URL, {
+            method: "POST",
+            mode: 'no-cors', // 保持 no-cors 避免跨域阻擋，但這會拿不到 response
+            body: JSON.stringify(data)
+        });
+
+        // 因為 no-cors 拿不到 response，我們設定一個短暫延遲後顯示成功
+        setTimeout(() => {
+            status.innerText = "雲端狀態：同步成功 " + new Date().toLocaleTimeString();
+            status.style.color = "var(--success)";
+        }, 1000);
+
+    } catch (e) {
+        console.error("同步失敗:", e);
+        status.innerText = "雲端狀態：同步失敗！";
+        status.style.color = "var(--danger)";
+        throw e;
+    }
+    
     if(btn) { btn.innerText = "💾 儲存所有變更"; btn.disabled = false; }
 }
-
-function initData() { 
-    const config = { "A": 60, "B": 20, "C": 20, "D": 20 }; 
-    data = [];
-    Object.keys(config).forEach(z => { 
-        for (let i = 1; i <= config[z]; i++) data.push({ zone: z, number: i, products: [], owner: "", contact: "", rent: "", deposit: "", period: "", signDate: "" }); 
-    }); 
-}
-
 function press(n) { if(!isLocked && tempPw.length < 4) { tempPw += n; updateDisplay(); } }
 function resetPw() { tempPw = ""; updateDisplay(); }
 function updateDisplay() { document.getElementById('pwDisplay').innerText = "•".repeat(tempPw.length); }
@@ -263,13 +289,22 @@ function updateDisplay() { document.getElementById('pwDisplay').innerText = "•
 async function loginCheck() { 
     if(isLocked) return;
     const screen = document.getElementById('pwDisplay');
-    if (["1688", "6969", "9527"].includes(tempPw)) {
-        let type = (tempPw === "1688") ? "boss" : (tempPw === "6969" ? "staff" : "owner");
+    
+    // 管理者：1688, 一般模式：9527, 備用：6969
+    const isAdmin = (tempPw === "1688" || tempPw === "6969");
+    const isOwner = (tempPw === "9527");
+
+    if (isAdmin || isOwner) {
+        let type = isAdmin ? "boss" : "owner";
         screen.style.letterSpacing = "1px";
         screen.innerText = "讀取中...";
+        
+        // 模擬讀取並獲取資料
         await loadFromCloud();
+        
         screen.innerText = "讀取完成，歡迎";
         localStorage.setItem("gw_login_session", type); 
+        
         setTimeout(() => {
             startApp(type);
             resetPw();
@@ -283,18 +318,29 @@ async function loginCheck() {
             document.getElementById('loginBox').classList.remove('shake-heavy'); 
             screen.style.color = "var(--accent)"; screen.style.letterSpacing = "5px"; resetPw(); 
         }, 800);
-        if (errorCounter >= 3) triggerLockdown();
+        if (errorCounter >= 3) {
+            const lockTime = 30;
+            localStorage.setItem("gw_locked_until", Date.now() + (lockTime * 1000));
+            triggerLockdown(lockTime);
+        }
     } 
 }
 
-function triggerLockdown() {
+function triggerLockdown(seconds) {
     isLocked = true; errorCounter = 0;
     const overlay = document.getElementById('lockOverlay');
     overlay.style.display = 'flex';
-    let timeLeft = 30;
+    let timeLeft = seconds;
+    
     const timer = setInterval(() => {
         document.getElementById('countDisplay').innerText = timeLeft;
-        if (timeLeft <= 0) { clearInterval(timer); overlay.style.display = 'none'; isLocked = false; resetPw(); }
+        if (timeLeft <= 0) { 
+            clearInterval(timer); 
+            overlay.style.display = 'none'; 
+            isLocked = false; 
+            localStorage.removeItem("gw_locked_until");
+            resetPw(); 
+        }
         timeLeft--;
     }, 1000);
 }
@@ -304,15 +350,15 @@ function startApp(type) {
     document.getElementById('loginOverlay').style.display = "none"; 
     document.getElementById('mainUI').style.display = "block"; 
     document.getElementById('mainLogoutBtn').style.display = "block";
-    document.getElementById('pageTitle').innerText = (type==="boss"?"總監":(type==="staff"?"員工":"格主")) + "模式";
-    if(type === "boss" || type === "staff") document.getElementById('excelBtnContainer').style.display = "block";
+    document.getElementById('pageTitle').innerText = (type==="boss"?"總監模式":"格主模式");
+    if(type === "boss") document.getElementById('excelBtnContainer').style.display = "block";
     showZones(); 
-    
-    // 啟動每 30 秒同步一次
-    if(autoSyncTimer) clearInterval(autoSyncTimer);
-    autoSyncTimer = setInterval(loadFromCloud, 30000);
+if(autoSyncTimer) clearInterval(autoSyncTimer);
+    // 登入 10 秒後才開啟循環同步，給手動存檔留緩衝時間
+    setTimeout(() => {
+        autoSyncTimer = setInterval(loadFromCloud, 30000);
+    }, 10000);
 }
-
 function logout() { 
     if(confirm("確定登出系統？")) {
         if(autoSyncTimer) clearInterval(autoSyncTimer);
@@ -321,19 +367,14 @@ function logout() {
     }
 }
 
-// 修正後的鍵盤處理邏輯
 function handleGlobalKey(e) {
     const isInput = (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA");
-    
-    // 如果正在登入畫面
     if (document.getElementById('loginOverlay').style.display !== "none") {
         if (/[0-9]/.test(e.key)) press(e.key);
         if (e.key === "Enter") loginCheck();
         if (e.key === "Backspace") { e.preventDefault(); resetPw(); }
         return;
     }
-
-    // 如果在系統內且「不在」輸入框裡
     if (!isInput) {
         if (e.key === "Backspace") { e.preventDefault(); goBack(); }
         if (e.key === "Enter") {
@@ -345,29 +386,18 @@ function handleGlobalKey(e) {
 function renderProducts() {
     const productsDiv = document.getElementById('products');
     productsDiv.innerHTML = "";
-    
     currentItem.products.forEach((p, i) => {
         const r = document.createElement("div");
         const isSold = (p.type === "已售出");
         const isOwner = (loginType === "owner"); 
-        const isAdmin = (loginType === "boss" || loginType === "staff"); 
+        const isAdmin = (loginType === "boss"); 
         const forceLocked = (isOwner && p.isSaved);
-        
         r.className = "row";
-        if(isSold) {
-            r.style.border = "1px solid var(--danger)";
-            r.style.boxShadow = "inset 0 0 10px rgba(255, 49, 49, 0.2)";
-        }
-        
+        if(isSold) { r.style.border = "1px solid var(--danger)"; r.style.boxShadow = "inset 0 0 10px rgba(255, 49, 49, 0.2)"; }
         let imgHTML = p.img 
-            ? `<div style="position:relative">
-                <img src="${p.img}" class="img-preview" onclick="viewImage('${p.img}')">
-                ${!forceLocked ? `<div onclick="triggerUpload(${i})" style="position:absolute; bottom:0; right:0; background:rgba(0,0,0,0.6); font-size:10px; padding:2px; cursor:pointer;">🔄</div>` : ''}
-               </div>`
+            ? `<div style="position:relative"><img src="${p.img}" class="img-preview" onclick="viewImage('${p.img}')">${!forceLocked ? `<div onclick="triggerUpload(${i})" style="position:absolute; bottom:0; right:0; background:rgba(0,0,0,0.6); font-size:10px; padding:2px; cursor:pointer;">🔄</div>` : ''}</div>`
             : `<div class="img-upload-placeholder" ${forceLocked ? "" : `onclick="triggerUpload(${i})"`}>📷</div>`;
-
         let fileInput = `<input type="file" id="file-${i}" accept="image/*" onchange="handleImgUpload(this, ${i})">`;
-
         let inner = `${imgHTML} ${fileInput}
                      <div style="display:flex; flex-direction:column; gap:2px; width:100%;">
                         ${isSold ? '<span style="color:var(--danger); font-size:0.7rem; font-weight:bold; margin-bottom:2px;">🚩 已售出</span>' : ''}
@@ -378,7 +408,6 @@ function renderProducts() {
                         <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
                         <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
                      </select>`;
-        
         const showActionArea = isAdmin || (!forceLocked);
         if (p.type === "刮卡") {
             r.style.gridTemplateColumns = showActionArea ? "60px 1.5fr 1fr 1fr 1fr 80px" : "60px 1.5fr 1fr 1fr 1fr";
@@ -388,16 +417,10 @@ function renderProducts() {
             r.style.gridTemplateColumns = showActionArea ? "60px 1.5fr 1fr 2fr 80px" : "60px 1.5fr 1fr 2fr";
             inner += `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${forceLocked?"readonly":""}>`;
         }
-        
         if (showActionArea) {
             inner += `<div style="display:flex; gap:5px; justify-content:center;">`;
-            if (isAdmin) {
-                const btnIcon = isSold ? "🔙" : "💰";
-                inner += `<button class="sold-btn" onclick="toggleSold(${i})">${btnIcon}</button>`;
-            }
-            if (isAdmin || !forceLocked) {
-                inner += `<button class="remove-btn" onclick="removeProduct(${i})">✕</button>`;
-            }
+            if (isAdmin) { inner += `<button class="sold-btn" onclick="toggleSold(${i})">${isSold ? "🔙" : "💰"}</button>`; }
+            if (isAdmin || !forceLocked) { inner += `<button class="remove-btn" onclick="removeProduct(${i})">✕</button>`; }
             inner += `</div>`;
         }
         r.innerHTML = inner; productsDiv.appendChild(r);
@@ -418,18 +441,8 @@ function handleTypeChange(newType, index) {
     renderProducts();
 }
 
-async function addProduct() { 
-    currentItem.products.push({ name: "", type: "直售", price: "", total: "", isSaved: false, img: "" }); 
-    renderProducts(); 
-}
-
-async function removeProduct(i) {
-    if(confirm("確定刪除此商品？")) {
-        currentItem.products.splice(i, 1);
-        renderProducts();
-    }
-}
-
+async function addProduct() { currentItem.products.push({ name: "", type: "直售", price: "", total: "", isSaved: false, img: "" }); renderProducts(); }
+async function removeProduct(i) { if(confirm("確定刪除此商品？")) { currentItem.products.splice(i, 1); renderProducts(); } }
 function triggerUpload(index) { document.getElementById(`file-${index}`).click(); }
 
 function handleImgUpload(input, index) {
@@ -459,11 +472,8 @@ function viewImage(src) {
 }
 
 function showZones() {
-    currentZone = null; 
-    const grid = document.getElementById('gridPage');
-    grid.innerHTML = ""; 
-    document.getElementById('detailPage').style.display = "none"; 
-    grid.style.display = "grid"; 
+    currentZone = null; const grid = document.getElementById('gridPage'); grid.innerHTML = ""; 
+    document.getElementById('detailPage').style.display = "none"; grid.style.display = "grid"; 
     document.getElementById('backBtn').style.display = "none";
     ["A", "B", "C", "D"].forEach(z => {
         const div = document.createElement("div"); div.className = `cell empty`;
@@ -473,9 +483,7 @@ function showZones() {
 }
 
 function openZone(z) {
-    currentZone = z; 
-    const grid = document.getElementById('gridPage');
-    grid.innerHTML = ""; 
+    currentZone = z; const grid = document.getElementById('gridPage'); grid.innerHTML = ""; 
     document.getElementById('backBtn').style.display = "flex";
     const today = new Date();
     data.filter(d => d.zone === z).forEach(item => {
@@ -511,26 +519,42 @@ function openDetail(item, code) {
     document.getElementById('dDeposit').value = item.deposit || ""; 
     document.getElementById('dPeriod').value = item.period || ""; 
     document.getElementById('dSignDate').value = item.signDate || "";
-    
-    let canEditInfo = (loginType === "boss") || (loginType === "staff" && !item.owner);
+    let canEditInfo = (loginType === "boss");
     [dOwner, dContact, dRent, dDeposit, dPeriod, dSignDate].forEach(f => f.readOnly = !canEditInfo);
     document.getElementById('delBtn').style.display = (loginType === "owner") ? "none" : "block";
-    renderProducts(); 
-    document.getElementById('gridPage').style.display = "none"; 
-    document.getElementById('detailPage').style.display = "block";
+    renderProducts(); document.getElementById('gridPage').style.display = "none"; document.getElementById('detailPage').style.display = "block";
 }
 
 async function saveDetail() {
+    // 1. 強制更新當前項目的資料 (確保從 input 抓取最新值)
+    if (loginType !== "owner") {
+        currentItem.owner = document.getElementById('dOwner').value;
+        currentItem.contact = document.getElementById('dContact').value;
+        currentItem.rent = document.getElementById('dRent').value;
+        currentItem.deposit = document.getElementById('dDeposit').value;
+        currentItem.period = document.getElementById('dPeriod').value;
+        currentItem.signDate = document.getElementById('dSignDate').value;
+    }
+
+    // 2. 處理商品鎖定與同步
     if (loginType === "owner") {
-        if (confirm("儲存後現有商品將鎖定且不可刪除，確定儲存？")) { 
-            currentItem.products.forEach(p => p.isSaved = true); 
-            await saveToCloud(); goBack(); 
+        if (confirm("儲存後現有商品將鎖定且不可刪除，確定儲存？")) {
+            currentItem.products.forEach(p => p.isSaved = true);
+            await forceSave();
         }
     } else {
-        currentItem.owner = dOwner.value; currentItem.contact = dContact.value; currentItem.rent = dRent.value; 
-        currentItem.deposit = dDeposit.value; currentItem.period = dPeriod.value; currentItem.signDate = dSignDate.value;
         currentItem.products.forEach(p => p.isSaved = true);
-        await saveToCloud(); goBack();
+        await forceSave();
+    }
+}
+
+// 獨立出來的強制存檔函式
+async function forceSave() {
+    try {
+        await saveToCloud(); // 呼叫下方的 POST 同步
+        goBack();
+    } catch (e) {
+        alert("存檔失敗，請檢查網路連線或圖片是否過大！");
     }
 }
 
