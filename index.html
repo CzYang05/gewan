@@ -20,6 +20,13 @@ body {
 
 h1, h2 { text-align: center; text-shadow: 0 0 10px var(--accent); color: var(--accent); }
 
+/* 急促呼吸燈動畫 */
+@keyframes urgent-breath {
+    0% { box-shadow: 0 0 5px var(--danger); border-color: var(--danger); }
+    50% { box-shadow: 0 0 20px var(--danger); border-color: #ff8888; }
+    100% { box-shadow: 0 0 5px var(--danger); border-color: var(--danger); }
+}
+
 #imageOverlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.9);
     display: none; justify-content: center; align-items: center;
@@ -80,7 +87,7 @@ input[type="file"] { display: none; }
 #loginOverlay { position: fixed; inset: 0; background: #0d1117; display: flex; justify-content: center; align-items: center; z-index: 9999; }
 .login-box { background: #161b22; padding: 2rem; border-radius: 20px; text-align: center; width: 300px; border: 2px solid var(--accent); position: relative; }
 .pw-screen { 
-    background: #000; font-size: 1.5rem; padding: 15px; border-radius: 12px; 
+    background: #000; font-size: 1.2rem; padding: 15px; border-radius: 12px; 
     margin-bottom: 20px; color: var(--accent); min-height: 45px; 
     letter-spacing: 5px; border: 1px solid var(--accent); 
     display: flex; justify-content: center; align-items: center;
@@ -103,7 +110,7 @@ input[type="file"] { display: none; }
     padding: 10px 20px; color: white; width: 100%; box-sizing: border-box; text-align: center; outline: none;
 }
 .grid { display: grid; gap: 12px; width: 100%; max-width: 1200px; margin: 1.5rem auto; grid-template-columns: repeat(5, 1fr); }
-.cell { background: var(--card-bg); border-radius: 12px; padding: 1rem 0.5rem; text-align: center; cursor: pointer; display: flex; flex-direction: column; justify-content: center; min-height: 85px; border: 1px solid #30363d; }
+.cell { background: var(--card-bg); border-radius: 12px; padding: 1rem 0.5rem; text-align: center; cursor: pointer; display: flex; flex-direction: column; justify-content: center; min-height: 85px; border: 1px solid #30363d; position: relative; }
 .cell.empty { border: 1px dashed var(--accent); color: var(--accent); }
 .cell.occupied { border: 1px solid var(--success); color: var(--success); }
 
@@ -115,10 +122,10 @@ button.action { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-w
 .success { background: linear-gradient(45deg, #27ae60, #2ecc71); }
 .danger { background: linear-gradient(45deg, #e74c3c, #c0392b); }
 .warning { background: linear-gradient(45deg, #f39c12, #e67e22); color: #fff; }
-.sold-out { background: rgba(255, 49, 49, 0.15); border: 1px solid #551111; opacity: 0.85; }
-.remove-btn { background: #441111; color: #ff5555; border: 1px solid #ff3131; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; justify-self: center;}
-.display-label { background: rgba(255,255,255,0.05); color: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; border: 1px solid #30363d; height: 100%; }
-.sold-label { background: var(--danger); color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; height: 100%; }
+
+.remove-btn { background: #441111; color: #ff5555; border: 1px solid #ff3131; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.sold-btn { background: #1a4a1a; color: #39ff14; border: 1px solid #39ff14; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
 #syncStatus { position: fixed; bottom: 10px; right: 10px; font-size: 0.7rem; color: #555; }
 </style>
 </head>
@@ -198,7 +205,7 @@ const CLOUD_URL ="https://script.google.com/macros/s/AKfycbz83Rke8XxAQ1ItOIhpUTz
 
 let data = [];
 let currentZone = null, currentItem = null, tempPw = "", loginType = "";
-let errorCounter = 0, isLocked = false;
+let errorCounter = 0, isLocked = false, autoSyncTimer = null;
 
 window.onload = async () => {
     const savedSession = localStorage.getItem("gw_login_session");
@@ -210,16 +217,23 @@ window.onload = async () => {
     }
 };
 
+// 自動同步讀取
 async function loadFromCloud() {
-    document.getElementById('syncStatus').innerText = "雲端狀態：讀取中...";
+    // 如果正在編輯細節，不執行自動覆蓋，避免輸入到一半被清空
+    if (document.getElementById('detailPage').style.display === "block") return;
+
+    document.getElementById('syncStatus').innerText = "雲端同步中...";
     try {
         const response = await fetch(CLOUD_URL);
-        data = await response.json();
-        if (!data || data.length === 0) initData();
-        document.getElementById('syncStatus').innerText = "雲端狀態：已同步";
+        const newData = await response.json();
+        if (newData && newData.length > 0) {
+            data = newData;
+            localStorage.setItem("gw_data", JSON.stringify(data));
+            if (currentZone) openZone(currentZone); else showZones();
+        }
+        document.getElementById('syncStatus').innerText = "雲端狀態：已同步 " + new Date().toLocaleTimeString();
     } catch (e) {
         data = JSON.parse(localStorage.getItem("gw_data")) || [];
-        if (data.length === 0) initData();
     }
 }
 
@@ -251,7 +265,7 @@ async function loginCheck() {
     const screen = document.getElementById('pwDisplay');
     if (["1688", "6969", "9527"].includes(tempPw)) {
         let type = (tempPw === "1688") ? "boss" : (tempPw === "6969" ? "staff" : "owner");
-        screen.style.letterSpacing = "2px";
+        screen.style.letterSpacing = "1px";
         screen.innerText = "讀取中...";
         await loadFromCloud();
         screen.innerText = "讀取完成，歡迎";
@@ -263,7 +277,7 @@ async function loginCheck() {
         }, 800);
     } else { 
         errorCounter++;
-        screen.style.letterSpacing = "2px"; screen.style.color = "var(--danger)"; screen.innerText = "輸入錯誤";
+        screen.style.letterSpacing = "1px"; screen.style.color = "var(--danger)"; screen.innerText = "輸入錯誤";
         document.getElementById('loginBox').classList.add('shake-heavy');
         setTimeout(() => { 
             document.getElementById('loginBox').classList.remove('shake-heavy'); 
@@ -293,12 +307,38 @@ function startApp(type) {
     document.getElementById('pageTitle').innerText = (type==="boss"?"總監":(type==="staff"?"員工":"格主")) + "模式";
     if(type === "boss" || type === "staff") document.getElementById('excelBtnContainer').style.display = "block";
     showZones(); 
+    
+    // 啟動每 30 秒同步一次
+    if(autoSyncTimer) clearInterval(autoSyncTimer);
+    autoSyncTimer = setInterval(loadFromCloud, 30000);
 }
 
 function logout() { 
     if(confirm("確定登出系統？")) {
+        if(autoSyncTimer) clearInterval(autoSyncTimer);
         localStorage.removeItem("gw_login_session");
         location.reload(); 
+    }
+}
+
+// 修正後的鍵盤處理邏輯
+function handleGlobalKey(e) {
+    const isInput = (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA");
+    
+    // 如果正在登入畫面
+    if (document.getElementById('loginOverlay').style.display !== "none") {
+        if (/[0-9]/.test(e.key)) press(e.key);
+        if (e.key === "Enter") loginCheck();
+        if (e.key === "Backspace") { e.preventDefault(); resetPw(); }
+        return;
+    }
+
+    // 如果在系統內且「不在」輸入框裡
+    if (!isInput) {
+        if (e.key === "Backspace") { e.preventDefault(); goBack(); }
+        if (e.key === "Enter") {
+             if (document.getElementById('detailPage').style.display === "block") saveDetail();
+        }
     }
 }
 
@@ -309,13 +349,15 @@ function renderProducts() {
     currentItem.products.forEach((p, i) => {
         const r = document.createElement("div");
         const isSold = (p.type === "已售出");
-        const isOwner = (loginType === "owner");
-        
-        // 核心邏輯：格主模式下，如果已售出，強制變為唯讀鎖定
-        const forceLocked = (isOwner && isSold) || (isOwner && p.isSaved);
+        const isOwner = (loginType === "owner"); 
+        const isAdmin = (loginType === "boss" || loginType === "staff"); 
+        const forceLocked = (isOwner && p.isSaved);
         
         r.className = "row";
-        if(isSold) r.classList.add('sold-out');
+        if(isSold) {
+            r.style.border = "1px solid var(--danger)";
+            r.style.boxShadow = "inset 0 0 10px rgba(255, 49, 49, 0.2)";
+        }
         
         let imgHTML = p.img 
             ? `<div style="position:relative">
@@ -326,38 +368,48 @@ function renderProducts() {
 
         let fileInput = `<input type="file" id="file-${i}" accept="image/*" onchange="handleImgUpload(this, ${i})">`;
 
-        const isAdmin = (loginType === "boss" || loginType === "staff");
-        let selectOptions = `
-            <option value="直售" ${p.type==='直售'?'selected':''}>直售</option>
-            <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
-            <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
-            ${(isAdmin || isSold) ? `<option value="已售出" ${p.type==='已售出'?'selected':''}>已售出</option>` : ''}
-        `;
-
         let inner = `${imgHTML} ${fileInput}
-                     <input value="${p.name||''}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名" ${forceLocked?"readonly":""}>
+                     <div style="display:flex; flex-direction:column; gap:2px; width:100%;">
+                        ${isSold ? '<span style="color:var(--danger); font-size:0.7rem; font-weight:bold; margin-bottom:2px;">🚩 已售出</span>' : ''}
+                        <input value="${p.name||''}" oninput="currentItem.products[${i}].name=this.value" placeholder="品名" ${forceLocked?"readonly":""}>
+                     </div>
                      <select onchange="handleTypeChange(this.value, ${i})" ${forceLocked?"disabled":""}>
-                        ${selectOptions}
+                        <option value="直售" ${p.type==='直售' || isSold ?'selected':''}>直售</option>
+                        <option value="刮卡" ${p.type==='刮卡'?'selected':''}>刮卡</option>
+                        <option value="展示" ${p.type==='展示'?'selected':''}>展示</option>
                      </select>`;
         
+        const showActionArea = isAdmin || (!forceLocked);
         if (p.type === "刮卡") {
-            r.style.gridTemplateColumns = forceLocked ? "60px 1fr 1fr 1fr 1fr" : "60px 1fr 1fr 1fr 1fr 40px";
+            r.style.gridTemplateColumns = showActionArea ? "60px 1.5fr 1fr 1fr 1fr 80px" : "60px 1.5fr 1fr 1fr 1fr";
             inner += `<input type="number" placeholder="格" value="${p.total||''}" oninput="currentItem.products[${i}].total=this.value" ${forceLocked?"readonly":""}>
                       <input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${forceLocked?"readonly":""}>`;
         } else {
-            r.style.gridTemplateColumns = forceLocked ? "60px 1fr 1fr 2fr" : "60px 1fr 1fr 2fr 40px";
-            if (p.type === "展示") inner += `<div class="display-label">展示中</div>`;
-            else if (isSold) inner += `<div class="sold-label">已售出</div>`;
-            else inner += `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${forceLocked?"readonly":""}>`;
+            r.style.gridTemplateColumns = showActionArea ? "60px 1.5fr 1fr 2fr 80px" : "60px 1.5fr 1fr 2fr";
+            inner += `<input type="number" placeholder="價" value="${p.price||''}" oninput="currentItem.products[${i}].price=this.value" ${forceLocked?"readonly":""}>`;
         }
         
-        // 刪除按鈕：格主模式下，已售出的商品不可刪除
-        if (!forceLocked) {
-            inner += `<button class="remove-btn" onclick="removeProduct(${i})">✕</button>`;
+        if (showActionArea) {
+            inner += `<div style="display:flex; gap:5px; justify-content:center;">`;
+            if (isAdmin) {
+                const btnIcon = isSold ? "🔙" : "💰";
+                inner += `<button class="sold-btn" onclick="toggleSold(${i})">${btnIcon}</button>`;
+            }
+            if (isAdmin || !forceLocked) {
+                inner += `<button class="remove-btn" onclick="removeProduct(${i})">✕</button>`;
+            }
+            inner += `</div>`;
         }
-        
         r.innerHTML = inner; productsDiv.appendChild(r);
     });
+}
+
+async function toggleSold(i) {
+    const p = currentItem.products[i];
+    if (p.type === "已售出") { p.type = "直售"; } 
+    else { if(confirm("確定將此商品標記為「已售出」？")) p.type = "已售出"; else return; }
+    renderProducts();
+    await saveToCloud();
 }
 
 function handleTypeChange(newType, index) {
@@ -369,14 +421,12 @@ function handleTypeChange(newType, index) {
 async function addProduct() { 
     currentItem.products.push({ name: "", type: "直售", price: "", total: "", isSaved: false, img: "" }); 
     renderProducts(); 
-    await saveToCloud();
 }
 
 async function removeProduct(i) {
     if(confirm("確定刪除此商品？")) {
         currentItem.products.splice(i, 1);
         renderProducts();
-        await saveToCloud();
     }
 }
 
@@ -387,7 +437,7 @@ function handleImgUpload(input, index) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
-            img.onload = async function() {
+            img.onload = function() {
                 const canvas = document.createElement('canvas');
                 const MAX_WIDTH = 600; let width = img.width, height = img.height;
                 if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
@@ -395,7 +445,6 @@ function handleImgUpload(input, index) {
                 canvas.getContext("2d").drawImage(img, 0, 0, width, height);
                 currentItem.products[index].img = canvas.toDataURL("image/jpeg", 0.7);
                 renderProducts();
-                await saveToCloud();
             };
             img.src = e.target.result;
         };
@@ -410,23 +459,39 @@ function viewImage(src) {
 }
 
 function showZones() {
-    currentZone = null; gridPage.innerHTML = ""; detailPage.style.display = "none"; gridPage.style.display = "grid"; 
+    currentZone = null; 
+    const grid = document.getElementById('gridPage');
+    grid.innerHTML = ""; 
+    document.getElementById('detailPage').style.display = "none"; 
+    grid.style.display = "grid"; 
     document.getElementById('backBtn').style.display = "none";
     ["A", "B", "C", "D"].forEach(z => {
         const div = document.createElement("div"); div.className = `cell empty`;
         div.innerHTML = `<div>${z} 區</div><small>租: ${data.filter(d => d.zone === z && d.owner).length}</small>`;
-        div.onclick = () => openZone(z); gridPage.appendChild(div);
+        div.onclick = () => openZone(z); grid.appendChild(div);
     });
 }
 
 function openZone(z) {
-    currentZone = z; gridPage.innerHTML = ""; document.getElementById('backBtn').style.display = "flex";
+    currentZone = z; 
+    const grid = document.getElementById('gridPage');
+    grid.innerHTML = ""; 
+    document.getElementById('backBtn').style.display = "flex";
+    const today = new Date();
     data.filter(d => d.zone === z).forEach(item => {
         const c = document.createElement("div"); const code = getCode(item);
         let statusClass = item.owner ? 'occupied' : 'empty';
         c.className = `cell ${statusClass}`;
-        c.innerHTML = `<div>${code}</div><div>${item.owner}</div>`;
-        c.onclick = () => openDetail(item, code); gridPage.appendChild(c);
+        let extraStyle = "";
+        if(item.period) {
+            const expDate = new Date(item.period);
+            const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+            if(diffDays <= 2) extraStyle = "color:var(--danger); border-color:var(--danger); animation: urgent-breath 0.6s infinite;";
+            else if(diffDays <= 7) extraStyle = "color:var(--warning); border-color:var(--warning);";
+        }
+        c.style = extraStyle;
+        c.innerHTML = `<div>${code}</div><div style="font-weight:bold;">${item.owner || ''}</div>${item.period?`<div style="font-size:0.7rem; margin-top:4px;">${item.period}</div>`:""}`;
+        c.onclick = () => openDetail(item, code); grid.appendChild(c);
     });
 }
 
@@ -439,22 +504,29 @@ function getCode(item) {
 }
 
 function openDetail(item, code) {
-    currentItem = item; dCode.textContent = "位置：" + code;
-    dOwner.value = item.owner || ""; dContact.value = item.contact || ""; dRent.value = item.rent || ""; 
-    dDeposit.value = item.deposit || ""; dPeriod.value = item.period || ""; dSignDate.value = item.signDate || "";
+    currentItem = item; document.getElementById('dCode').textContent = "位置：" + code;
+    document.getElementById('dOwner').value = item.owner || ""; 
+    document.getElementById('dContact').value = item.contact || ""; 
+    document.getElementById('dRent').value = item.rent || ""; 
+    document.getElementById('dDeposit').value = item.deposit || ""; 
+    document.getElementById('dPeriod').value = item.period || ""; 
+    document.getElementById('dSignDate').value = item.signDate || "";
+    
     let canEditInfo = (loginType === "boss") || (loginType === "staff" && !item.owner);
     [dOwner, dContact, dRent, dDeposit, dPeriod, dSignDate].forEach(f => f.readOnly = !canEditInfo);
     document.getElementById('delBtn').style.display = (loginType === "owner") ? "none" : "block";
-    renderProducts(); gridPage.style.display = "none"; detailPage.style.display = "block";
+    renderProducts(); 
+    document.getElementById('gridPage').style.display = "none"; 
+    document.getElementById('detailPage').style.display = "block";
 }
 
 async function saveDetail() {
     if (loginType === "owner") {
-        if (confirm("儲存後商品將鎖定，確定？")) { currentItem.products.forEach(p => p.isSaved = true); await saveToCloud(); goBack(); }
-    } else {
-        if (loginType === "staff" && currentItem.owner && (currentItem.owner !== dOwner.value)) {
-            alert("該格位資訊已設定，員工模式無法修改。"); return;
+        if (confirm("儲存後現有商品將鎖定且不可刪除，確定儲存？")) { 
+            currentItem.products.forEach(p => p.isSaved = true); 
+            await saveToCloud(); goBack(); 
         }
+    } else {
         currentItem.owner = dOwner.value; currentItem.contact = dContact.value; currentItem.rent = dRent.value; 
         currentItem.deposit = dDeposit.value; currentItem.period = dPeriod.value; currentItem.signDate = dSignDate.value;
         currentItem.products.forEach(p => p.isSaved = true);
@@ -463,7 +535,11 @@ async function saveDetail() {
 }
 
 function goBack() { 
-    if (detailPage.style.display === "block") { detailPage.style.display = "none"; gridPage.style.display = "grid"; if(currentZone) openZone(currentZone); else showZones(); } 
+    if (document.getElementById('detailPage').style.display === "block") { 
+        document.getElementById('detailPage').style.display = "none"; 
+        document.getElementById('gridPage').style.display = "grid"; 
+        if(currentZone) openZone(currentZone); else showZones(); 
+    } 
     else if (currentZone) showZones(); 
 }
 
@@ -474,24 +550,15 @@ function autoFormatDate(input) {
 
 function handleSearch() {
     const term = document.getElementById('searchInput').value.trim();
+    const grid = document.getElementById('gridPage');
     if (term === "") { if (currentZone) openZone(currentZone); else showZones(); return; }
-    gridPage.innerHTML = ""; document.getElementById('backBtn').style.display = "flex";
+    grid.innerHTML = ""; document.getElementById('backBtn').style.display = "flex";
     data.filter(d => (d.owner && d.owner.includes(term)) || (d.contact && d.contact.includes(term))).forEach(item => {
         const c = document.createElement("div"); const code = getCode(item);
         c.className = `cell occupied`;
         c.innerHTML = `<div>${code}</div><div>${item.owner}</div>`;
-        c.onclick = () => openDetail(item, code); gridPage.appendChild(c);
+        c.onclick = () => openDetail(item, code); grid.appendChild(c);
     });
-}
-
-function handleGlobalKey(e) {
-    if (document.getElementById('loginOverlay').style.display !== "none") {
-        if (/[0-9]/.test(e.key)) press(e.key);
-        if (e.key === "Enter") loginCheck();
-        if (e.key === "Backspace") { e.preventDefault(); resetPw(); }
-    } else if (e.key === "Backspace" && e.target.tagName !== "INPUT") {
-        e.preventDefault(); goBack();
-    }
 }
 
 async function deleteThisCell() { 
